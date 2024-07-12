@@ -33,7 +33,7 @@ def select_dataset(name):
     return datasets.get(name.lower(), None)
 
 
-def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=True):
+def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False):
     """
     Trains a Random Forest classifier on a selected dataset, evaluates its performance, and optionally plots the DPG.
 
@@ -47,7 +47,7 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, file_na
     save_plot_dir: Directory to save the plot image. Default is "examples/".
     attribute: A specific node attribute to visualize. Default is None.
     communities: Boolean indicating whether to visualize communities. Default is False.
-    class_flag: Boolean indicating whether to highlight class nodes. Default is True.
+    class_flag: Boolean indicating whether to highlight class nodes. Default is False.
 
     Returns:
     df: A pandas DataFrame containing node metrics.
