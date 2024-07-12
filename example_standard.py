@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser.add_argument("--plot", action='store_true', help="Plot the FHG, add the argument to use it as True")
     parser.add_argument("--save_plot_dir", type=str, default="examples/", help="Directory to save the plot image")
     parser.add_argument("--attribute", type=str, default=None, help="A specific node attribute to visualize")
-    parser.add_argument("--communities", type=str, default=False, help="Boolean indicating whether to visualize communities")
+    parser.add_argument("--communities", action='store_true', help="Boolean indicating whether to visualize communities, add the argument to use it as True")
     parser.add_argument("--class_flag", type=str, default=True, help="Boolean indicating whether to highlight class nodes")
     args = parser.parse_args()
 
@@ -33,9 +33,9 @@ if __name__ == "__main__":
 
     df.sort_values(['Degree'])
 
-    df.to_csv(os.path.join(args.dir, f'dataset_l{args.l}_pv{args.pv}_t{args.t}_node_metrics.csv'),
+    df.to_csv(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_node_metrics.csv'),
                 encoding='utf-8')
 
-    with open(os.path.join(args.dir, f'dataset_l{args.l}_pv{args.pv}_t{args.t}_dpg_metrics.txt'), 'w') as f:
+    with open(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_dpg_metrics.txt'), 'w') as f:
         for key, value in df_fhg_metrics.items():
             f.write(f"{key}: {value}\n")
