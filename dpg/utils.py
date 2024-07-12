@@ -30,32 +30,6 @@ def highlight_class_node(dot):
 
 
 
-def highlight_node(dot, node_name):
-    """
-    Highlights a specific node in the Graphviz Digraph by changing its edge properties to make it more prominent.
-
-    Args:
-    dot: A Graphviz Digraph object.
-    node_name: The name of the node to highlight.
-
-    Returns:
-    dot: The modified Graphviz Digraph object with the specified node highlighted.
-    """
-    # Iterate over each line in the dot body
-    for i, line in enumerate(dot.body):
-        # Extract the node identifier from the line
-        line_id = line.split(' ')[0].replace("\t", "")
-        # Check if the line contains the specified node name and represents an edge
-        if (node_name == line_id) & (line.find("->") != -1):
-            # Modify the edge properties to make it more prominent
-            dot.body[i] = dot.body[i].replace("penwidth=1", 'penwidth=5 color="orange" arrowsize=.7')
-            break
-    
-    # Return the modified Graphviz Digraph object
-    return dot
-
-
-
 def change_node_color(graph, node_id, new_color):
     """
     Changes the fill color of a specified node in the Graphviz Digraph.

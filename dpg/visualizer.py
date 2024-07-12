@@ -3,7 +3,7 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from PIL import Image
-from .utils import highlight_node, highlight_class_node, change_node_color, delete_folder_contents
+from .utils import highlight_class_node, change_node_color, delete_folder_contents
 
 def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, communities=False, class_flag=True):
     """
