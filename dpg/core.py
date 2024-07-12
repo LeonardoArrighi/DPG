@@ -8,13 +8,13 @@ import numpy as np
 import graphviz
 from itertools import combinations
 import networkx as nx
-from networkx.algorithms import approximation as approx # just for local_node_connectivity 
-from collections import Counter
+from networkx.algorithms import approximation as approx # just for local_node_connectivity
 
 import hashlib
 
 
 np.random.seed(42)
+
 
 
 def digraph_to_nx(graphviz_graph):
@@ -91,16 +91,38 @@ def digraph_to_nx(graphviz_graph):
 
 
 def tracing_rf(case_id, sample, rf_classifier, feature_names, decimal_threshold=1):
+    '''
+    This function traces the decision paths taken by each decision tree in a random forest classifier for a given sample.
+    It records the path of decisions made by each tree, including the comparisons at each node and the resulting class.
+
+    Args:
+    case_id: An identifier for the sample being traced.
+    sample: The input sample for which the decision paths are traced.
+    rf_classifier: The random forest classifier containing the decision trees.
+    feature_names: The names of the features used in the decision trees.
+    decimal_threshold: The number of decimal places to which thresholds are rounded (default is 1).
+
+    Returns:
+    event_log: A list of the decision steps taken by each tree in the forest for the given sample.
+    '''
+
+    # Initialize an empty event log to store the decision paths
     event_log = []
+
+    # Helper function to build the decision path for a single tree
     def build_path(tree, node_index, path=[]):
         tree_ = tree.tree_
+        
+        # Check if the node is a leaf node
         if tree_.children_left[node_index] == tree_.children_right[node_index]:
             path.append(f"Class {tree_.value[node_index].argmax()}")
         else:
+            # Get the feature name and threshold for the current node
             feature_name = feature_names[tree_.feature[node_index]]
             threshold = round(float(tree_.threshold[node_index]), decimal_threshold)
             sample_val = sample[tree_.feature[node_index]]
 
+            # Decide whether to go to the left or right child node based on the sample value
             if sample_val <= threshold:
                 path.append(f"{feature_name} <= {round(float(tree_.threshold[node_index]), decimal_threshold)}")
                 build_path(tree, tree_.children_left[node_index], path)
@@ -108,67 +130,112 @@ def tracing_rf(case_id, sample, rf_classifier, feature_names, decimal_threshold=
                 path.append(f"{feature_name} > {round(float(tree_.threshold[node_index]), decimal_threshold)}")
                 build_path(tree, tree_.children_right[node_index], path)
 
+    # Loop through each decision tree in the random forest
     for i, tree_in_forest in enumerate(rf_classifier.estimators_):
-        sample_path = []
-        build_path(tree_in_forest, 0, sample_path)
+        sample_path = []  # Initialize a path list for the current tree
+        build_path(tree_in_forest, 0, sample_path)  # Build the path starting from the root node
+        
+        # Log the steps in the event log with the corresponding sample and tree identifiers
         for step in sample_path:
             event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])
 
+    # Return the event log containing the decision paths
     return event_log
+
 
 
 def filter_log(log, perc_var):
     """
-    Filters log based on variant percentage (variants that occurred less than threshold are removed)
+    Filters a log based on the variant percentage. Variants (unique sequences of activities for cases) 
+    that occur less than the specified threshold are removed from the log.
+
+    Args:
+    log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
+    perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
+
+    Returns:
+    log: A filtered pandas DataFrame containing only the cases and activities that meet the variant percentage threshold.
     """
+
+    # Initialize a dictionary to store variants and their corresponding cases
     variants = {}
+
+    # Identify and count the unique variants in the log
     for case in log["case:concept:name"].unique():
-        key = "|".join(
-            [x for x in log[log["case:concept:name"] == case]["concept:name"]]
-        )
+        key = "|".join([x for x in log[log["case:concept:name"] == case]["concept:name"]])
         if key in variants:
             variants[key].append(case)
         else:
             variants[key] = [case]
+
+    # Get the total number of unique traces in the log
     total_traces = log["case:concept:name"].nunique()
 
+    # Initialize lists to store cases and activities that meet the threshold
     cases, activities = [], []
+
+    # Filter variants based on the percentage threshold
     for k, v in variants.items():
         if len(v) / total_traces >= perc_var:
+            # Add cases and their activities to the lists if they meet the threshold
             for case in v:
                 for act in k.split("|"):
                     cases.append(case)
                     activities.append(act)
-        else:
-            continue
-    log = pd.DataFrame(
-        zip(cases, activities), columns=["case:concept:name", "concept:name"]
-    )
+
+    # Create a new DataFrame from the filtered cases and activities
+    log = pd.DataFrame(zip(cases, activities), columns=["case:concept:name", "concept:name"])
+
     return log
+
 
 
 def discover_dfg(log):
     """
-    Mines the nodes and edges relationships and returns a dictionary
+    Mines the nodes and edges relationships from an event log and returns a dictionary representing
+    the Data Flow Graph (DFG). The DFG shows the frequency of transitions between activities.
+
+    Args:
+    log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
+
+    Returns:
+    dfg: A dictionary where keys are tuples representing transitions between activities and values are the counts of those transitions.
     """
+    # Initialize an empty dictionary to store the Data Flow Graph (DFG)
     dfg = {}
+    
+    # Iterate over each unique case in the log
     for case in log["case:concept:name"].unique():
+        # Extract the trace (sequence of activities) for the current case
         trace_df = log[log["case:concept:name"] == case].copy()
         trace_df.sort_values(by="case:concept:name", inplace=True)
+        
+        # Iterate through the trace to capture transitions between consecutive activities
         for i in range(len(trace_df) - 1):
-            key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])
+            key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])  # Create a key for the transition
             if key in dfg:
-                dfg[key] += 1
+                dfg[key] += 1  # Increment the count if the transition already exists in the DFG
             else:
-                dfg[key] = 1
+                dfg[key] = 1  # Initialize the count if the transition is new
+
+    # Return the DFG dictionary
     return dfg
+
 
 
 def generate_dot(dfg, log):
     """
-    Creates a graphviz digraph from graph (dictionary) and returns the dot
+    Creates a Graphviz directed graph (digraph) from a Data Flow Graph (DFG) dictionary and returns the dot representation.
+
+    Args:
+    dfg: A dictionary where keys are tuples representing transitions between activities and values are the counts of those transitions.
+    log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
+
+    Returns:
+    dot: A Graphviz dot object representing the directed graph.
     """
-    act_count = Counter(log["concept:name"])
+
+    # Initialize a Graphviz digraph with specified attributes
     dot = graphviz.Digraph(
         "dpg",
         engine="dot",
@@ -180,181 +247,77 @@ def generate_dot(dfg, log):
         },
         node_attr={"shape": "box"},
     )
+
+    # Keep track of added nodes to avoid duplicates
     added_nodes = set()
     
+    # Sort the DFG dictionary by values (transition counts) for deterministic order
     sorted_dict_values = {k: v for k, v in sorted(dfg.items(), key=lambda item: item[1])}
-    # Sort the items of the dfg dictionary for deterministic order
+
+    # Iterate through the sorted DFG dictionary
     for k, v in sorted_dict_values.items():
         
+        # Add the source node to the graph if not already added
         if k[0] not in added_nodes:
             dot.node(
                 str(int(hashlib.sha1(k[0].encode()).hexdigest(), 16)),
-                #label=f"{k[0]} ({act_count[k[0]]})", #do not put the count (for paper)
                 label=f"{k[0]}",
                 style="filled",
                 fontsize="20",
                 fillcolor="#ffc3c3",
             )
             added_nodes.add(k[0])
+        
+        # Add the destination node to the graph if not already added
         if k[1] not in added_nodes:
             dot.node(
                 str(int(hashlib.sha1(k[1].encode()).hexdigest(), 16)),
-                #label=f"{k[1]} ({act_count[k[1]]})",  #do not put the count (for paper)
-                label=f"{k[1]}",                
+                label=f"{k[1]}",
                 style="filled",
                 fontsize="20",
                 fillcolor="#ffc3c3",
             )
             added_nodes.add(k[1])
+        
+        # Add an edge between the source and destination nodes with the transition count as the label
         dot.edge(
-            str(int(hashlib.sha1(k[0].encode()).hexdigest(), 16)),str(int(hashlib.sha1(k[1].encode()).hexdigest(), 16)),
-            label=str(v), penwidth="1", fontsize="18"
+            str(int(hashlib.sha1(k[0].encode()).hexdigest(), 16)),
+            str(int(hashlib.sha1(k[1].encode()).hexdigest(), 16)),
+            label=str(v),
+            penwidth="1",
+            fontsize="18"
         )
+    
+    # Return the Graphviz dot object
     return dot
 
 
-def get_dpg_metrics(dpg_model, nodes_list):
-    """
-    Extract metrics from dpg
-    """
-    
-
-    diz_nodes = {node[1] if "->" not in node[0] else None: node[0] for node in nodes_list}
-    diz_nodes = {k: v for k, v in diz_nodes.items() if k is not None}
-    diz_nodes_reversed = {v: k for k, v in diz_nodes.items()}
-    
-    # -------------- NON FUNZIONA --------------
-    local_node_connectivity = []
-    for key_1, value_1 in diz_nodes.items():
-        for key_2, value_2 in diz_nodes.items():
-            if ('Class' in key_1) and ('Class' in key_2) and (key_1 != key_2):
-                local_node_connectivity.append([key_1, key_2, approx.local_node_connectivity(dpg_model, value_1, value_2)])
-
-    bridges = nx.bridges(dpg_model.to_undirected())
-    bridges_stack = []
-    for sets in bridges:
-        new_sets = set()
-        for node in sets:
-            new_sets.add(diz_nodes_reversed[str(node)])
-        bridges_stack.append(new_sets)
-    
-    cut_vertex = nx.articulation_points(dpg_model.to_undirected())
-    cut_vertex_stack = []
-    for vertex in cut_vertex:
-        if 'Class' not in str(diz_nodes_reversed[str(vertex)]):
-            cut_vertex_stack.append(diz_nodes_reversed[str(vertex)])
-    
-    
-    weakly_connected_components = nx.number_weakly_connected_components(dpg_model)
-
-    asyn_lpa_communities = nx.community.asyn_lpa_communities(dpg_model, weight='weight') # # find communities
-    asyn_lpa_communities_stack = []
-    for sets in asyn_lpa_communities:
-        new_sets = set()
-        for node in sets:
-            new_sets.add(diz_nodes_reversed[str(node)])
-        asyn_lpa_communities_stack.append(new_sets)
-
-    # convert communities in a dictionary
-    asyn_lpa_communities_dict = {}
-    for sets in asyn_lpa_communities_stack:
-        key_turn = None
-        for key in sets:
-            if 'Class' in key:
-                asyn_lpa_communities_dict[key] = []
-                key_turn = key
-                
-        for element in sets:
-            if 'Class' not in element:
-                if key_turn is not None:
-                    if key_turn in asyn_lpa_communities_dict:
-                        asyn_lpa_communities_dict[key_turn].append(element)
-
-    print(len(asyn_lpa_communities_dict['Class 1']))    
-    asyn_lpa_communities_bounds = calculate_boundaries(asyn_lpa_communities_dict)
-    print(len(asyn_lpa_communities_bounds['Class 1']))
-
-
-    overall_reciprocity = nx.overall_reciprocity(dpg_model)
-
-    if nx.is_directed_acyclic_graph(dpg_model):
-
-        ancestors = {}
-        for key, value in diz_nodes.items():
-            if ('Class' in key):
-                sets = nx.ancestors(dpg_model, value)
-                new_sets = set()
-                for node in sets:
-                    new_sets.add(diz_nodes_reversed[str(node)])
-                ancestors[key] = new_sets
-
-        descendants = {}
-        for key, value in diz_nodes.items():
-            if (dpg_model.in_degree(value) == 0):
-                sets = nx.descendants(dpg_model, value)
-                new_sets = set()
-                for node in sets:
-                    new_sets.add(diz_nodes_reversed[str(node)])
-                descendants[key] = new_sets
-
-        common = []
-        for key_1, value_1 in diz_nodes.items():
-            for key_2, value_2 in diz_nodes.items():
-                if ('Class' in key_1) and ('Class' in key_2) and (key_1 != key_2):
-                    common.append([key_1, key_2, diz_nodes_reversed[str(nx.lowest_common_ancestor(dpg_model, value_1, value_2))]])
-        
-        # symple_cycles = 0
-    
-    else:
-        ancestors = descendants = common = "The DHG model is not directed acyclic."
-
-        #symple_cycles = len([i for i in nx.simple_cycles(dpg_model)])
-        
-    predecessors = {}
-    for key_1, value_1 in diz_nodes.items():
-        if ('Class' in key_1):
-            predecessors[key_1] = []
-            for key_2, value_2 in diz_nodes.items():
-                if (key_1 != key_2) and nx.has_path(dpg_model, value_2, value_1):
-                    predecessors[key_1].append(key_2)
-
-    class_bounds = calculate_boundaries(predecessors)
-
-
-
-
-
-    data = {
-        "Local Node Connectivity": local_node_connectivity,
-        "Bridges": bridges_stack,
-        "Cut-Vertex": cut_vertex_stack,
-        "Weakly Connected Components": weakly_connected_components,
-        "Communities": asyn_lpa_communities_stack,
-        "Communities Bounds": asyn_lpa_communities_bounds,
-        "Ancestors": ancestors,
-        "Descendants": descendants,
-        "Lowest Common Nodes (Classes)": common,
-        #"Cycles": symple_cycles,
-        "Overall Reciprocity": overall_reciprocity,
-        "Predecessors": predecessors,
-        "Class Bounds": class_bounds,
-    }
-
-    return data
 
 def calculate_boundaries(dict):
-    # script for decide boundaries of every feature of every class
-    boundaries_class = {}
-    for key, value in dict.items():
-        if ('Class' in key):
+    """
+    Calculates the boundaries of every feature for every class based on the provided dictionary of predecessors.
 
+    Args:
+    dict: A dictionary where keys are class labels and values are lists of predecessor node labels.
+
+    Returns:
+    boundaries_class: A dictionary containing the boundaries for each feature of every class.
+    """
+    # Initialize an empty dictionary to store the boundaries for each class
+    boundaries_class = {}
+
+    # Iterate over each class and its corresponding predecessor nodes
+    for key, value in dict.items():
+        if 'Class' in key:
             boundaries_class[key] = []
             
+            # Extract unique feature names from the predecessor nodes
             key_set = []
             for i in dict[key]:
                 key_set.append(str(re.split(' <= | > ', i)[0]))
             key_set = set(key_set)
             
+            # Determine boundaries for each unique feature
             for valore_unico in key_set:
                 match_list = [math.inf, -math.inf]
                 for nodo in dict[key]:
@@ -366,7 +329,7 @@ def calculate_boundaries(dict):
                             if float(re.split(' <= ', nodo)[1]) > match_list[1]:
                                 match_list[1] = float(re.split(' <= ', nodo)[1])
 
-                # save as string the boundaries
+                # Save the boundaries as a string
                 alfa = None
                 if match_list[0] == math.inf:
                     alfa = str(valore_unico + " <= " + str(match_list[1]))
@@ -375,376 +338,142 @@ def calculate_boundaries(dict):
                 else:
                     alfa = str(str(match_list[0]) + ' < ' + valore_unico + ' <= ' + str(match_list[1]))
                 boundaries_class[key].append(alfa)
+
+    # Return the dictionary containing class boundaries
     return boundaries_class
+
+
+
+def get_dpg_metrics(dpg_model, nodes_list):
+    """
+    Extracts metrics from a DPG.
+
+    Args:
+    dpg_model: A NetworkX graph representing the directed process graph.
+    nodes_list: A list of nodes where each node is a tuple. The first element is the node identifier and the second is the node label.
+
+    Returns:
+    data: A dictionary containing the communities and class bounds extracted from the DPG model.
+    """
+    
+    # Create a dictionary to map node labels to their identifiers
+    diz_nodes = {node[1] if "->" not in node[0] else None: node[0] for node in nodes_list}
+    # Remove any None keys from the dictionary
+    diz_nodes = {k: v for k, v in diz_nodes.items() if k is not None}
+    # Create a reversed dictionary to map node identifiers to their labels
+    diz_nodes_reversed = {v: k for k, v in diz_nodes.items()}
+    
+    # Extract asynchronous label propagation communities
+    asyn_lpa_communities = nx.community.asyn_lpa_communities(dpg_model, weight='weight')
+    asyn_lpa_communities_stack = []
+    for sets in asyn_lpa_communities:
+        new_sets = set()
+        for node in sets:
+            new_sets.add(diz_nodes_reversed[str(node)])  # Map node identifiers back to labels
+        asyn_lpa_communities_stack.append(new_sets)
+        
+    # Initialize a dictionary to store predecessors for each class node
+    predecessors = {}
+    for key_1, value_1 in diz_nodes.items():
+        if 'Class' in key_1:
+            predecessors[key_1] = []
+            for key_2, value_2 in diz_nodes.items():
+                if key_1 != key_2 and nx.has_path(dpg_model, value_2, value_1):
+                    predecessors[key_1].append(key_2)
+
+    # Calculate the class boundaries
+    class_bounds = calculate_boundaries(predecessors)
+
+    # Create a data dictionary to store the extracted metrics
+    data = {
+        "Communities": asyn_lpa_communities_stack,
+        "Class Bounds": class_bounds,
+    }
+
+    return data
+
 
 
 def get_dpg_node_metrics(dpg_model, nodes_list):
     """
-    Extract metrics from dpg's nodes
-    """
+    Extracts metrics from the nodes of a Decision Predicate Graph (DPG) model.
 
+    Args:
+    dpg_model: A NetworkX graph representing the Decision Predicate Graph.
+    nodes_list: A list of nodes where each node is a tuple. The first element is the node identifier and the second is the node label.
+
+    Returns:
+    df: A pandas DataFrame containing the metrics for each node in the DPG.
+    """
+    
+    # Calculate the degree of each node
     degree = dict(nx.degree(dpg_model))
-    closeness = nx.closeness_centrality(dpg_model)
-    d_nodes = {node : dpg_model.degree(node) for node in list(dpg_model.nodes())}
-    d_centrality = nx.degree_centrality(dpg_model)
-    in_nodes = {node : dpg_model.in_degree(node) for node in list(dpg_model.nodes())}
-    in_centrality = nx.in_degree_centrality(dpg_model)
-    out_nodes = {node : dpg_model.out_degree(node) for node in list(dpg_model.nodes())}
-    out_centrality = nx.out_degree_centrality(dpg_model)
-    bottleneck_centrality = {node : in_centrality[node] / out_centrality[node] if out_centrality[node] != 0 else 0 for node in in_centrality}
-    eigenvector_centrality = nx.eigenvector_centrality(dpg_model, max_iter=10000, weight = 'weight')
+    # Calculate the in-degree (number of incoming edges) for each node
+    in_nodes = {node: dpg_model.in_degree(node) for node in list(dpg_model.nodes())}
+    # Calculate the out-degree (number of outgoing edges) for each node
+    out_nodes = {node: dpg_model.out_degree(node) for node in list(dpg_model.nodes())}
+    # Calculate the betweenness centrality for each node
     betweness_centrality = nx.betweenness_centrality(dpg_model, weight='weight')
-    #katz_centrality = nx.katz_centrality(dpg_model, max_iter = 1000, normalized = True, weight = 'weight')
-    local_reaching_centrality = {node : nx.local_reaching_centrality(dpg_model, node, weight = 'weight') for node in list(dpg_model.nodes())}
-    constraint = nx.constraint(dpg_model, weight='weight')
+    # Calculate the local reaching centrality for each node
+    local_reaching_centrality = {node: nx.local_reaching_centrality(dpg_model, node, weight='weight') for node in list(dpg_model.nodes())}
     
-    
-    # Create a DataFrame with node metrics
+    # Create a dictionary to store the node metrics
     data_node = {
-        "Node": list(dpg_model.nodes()), # # !
-        "Degree": list(degree.values()), # # !
-        "Closeness": list(closeness.values()), # # !
-        "Degree nodes": list(d_nodes.values()),                                 # # edges linked
-        "Degree centrality": list(d_centrality.values()),                       # # edges linked / # all edges 
-        "In degree nodes": list(in_nodes.values()),                             # # in edges linked
-        "In degree centrality": list(in_centrality.values()),                   # # in edges linked / # all edges
-        "Out degree nodes": list(out_nodes.values()),                           # # out edges linked
-        "Out degree centrality": list(out_centrality.values()),                 # # out edges linked / # all edges
-        "Bottleneck centrality": list(bottleneck_centrality.values()),          # # in / out
-        "Eigenvector centrality": list(eigenvector_centrality.values()),        # # useful for bottlenecks
-        "Betweness centrality": list(betweness_centrality.values()),            # # useful for bottlenecks
-        # "Katz centrality": list(katz_centrality.values()),                      # # useful for path importance
-        "Local reaching centrality": list(local_reaching_centrality.values()),  # # idea for pruning
-        "Constraint" : list(constraint.values()),                               # # A high constraint value for a node implies that the node is a key connector within a group of nodes that have strong ties to each other. In other words, if v is highly constrained, it means that its neighbors are not only connected to v but also form a tightly knit cluster themselves.
-        
+        "Node": list(dpg_model.nodes()),
+        "Degree": list(degree.values()),                               # Total degree (in-degree + out-degree)
+        "In degree nodes": list(in_nodes.values()),                    # Number of incoming edges
+        "Out degree nodes": list(out_nodes.values()),                  # Number of outgoing edges
+        "Betweness centrality": list(betweness_centrality.values()),   # Betweenness centrality (useful for identifying bottlenecks)
+        "Local reaching centrality": list(local_reaching_centrality.values()),  # Local reaching centrality (useful for feature importance)
     }
 
-
+    # Merge the node metrics with the node labels
     df = pd.merge(
         pd.DataFrame(data_node),
         pd.DataFrame(nodes_list, columns=["Node", "Label"]),
         on="Node",
         how="left",
     )
+    
+    # Return the resulting DataFrame
     return df
+
 
 
 def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold):
+    """
+    Generates a Decision Predicate Graph (DPG) from training data and a random forest model.
+
+    Args:
+    X_train: A numpy array or similar structure containing the training data samples.
+    feature_names: A list of feature names corresponding to the columns in X_train.
+    model: A trained random forest model.
+    perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
+    decimal_threshold: The number of decimal places to which thresholds are rounded.
+
+    Returns:
+    dot: A Graphviz Digraph object representing the Decision Predicate Graph.
+    """
+    # Initialize an empty log to store the traces
     log = []
+
+    # Trace the paths for each sample in the training data using the random forest model
     for i, sample in enumerate(X_train):
         log.extend(tracing_rf(i, sample, model, feature_names, decimal_threshold))
 
+    # Create a DataFrame from the log
     log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
     
+    # Filter the log based on the variant percentage if specified
     filtered_log = log_df
-    if perc_var>0:
+    if perc_var > 0:
         filtered_log = filter_log(log_df, perc_var)
 
+    # Discover the Data Flow Graph (DFG) from the filtered log
     dfg = discover_dfg(filtered_log)
 
-    # Create a Graphviz Digraph object from the DFG graph
+    # Create a Graphviz Digraph object from the DFG
     dot = generate_dot(dfg, filtered_log)
 
+    # Return the Graphviz Digraph object representing the DPG
     return dot
-
-
-def get_label(id, nodes_list):
-    #print('id',id)
-    return [node[1] for node in nodes_list if node[0] == id][0]
-
-def get_target_classes(str_targets):
-    df = pd.DataFrame(str_targets.split('|'), columns=['Targets'])
-    df[['Target1_Label', 'Target2_Label']] = df['Targets'].str.split('_x_', expand=True)
-    df.drop(columns=['Targets'], inplace=True)
-    df = df.iloc[1:]
-    return df
-
-def find_last_common_node(path1, path2):
-    for node1 in reversed(path1[1:]):
-        for node2 in reversed(path2[1:]):
-            if node1 == node2:
-                return(node1)
-    return None
-
-def get_critical_nodes(df, dpg_model, nodes_list, n_estimators, n_training_samples, verbose=False):
-    df = df.sort_values(['Degree']).reset_index().iloc[:,1:]
-    prefix = "Class"
-    matching_items = df[df["Label"].str.startswith(prefix)]["Node"]
-    possible_roots = df[df["Closeness"] == 0].Node.values
-
-    combs = list(combinations(matching_items, 2))
-    cn_list = []
-
-    nodes_list = sorted(nodes_list, key=lambda x: x[0])
-    #print(nodes_list)
-    
-    combs.sort()  # Sorting a list directly
-
-    # Searching for critical nodes
-    for root in possible_roots:
-        if not get_label(root, nodes_list).startswith(prefix):
-            source_node = root
-            for node in combs:
-                target_node_1 = node[0]
-                target_node_2 = node[1]
-                
-                # Calculate the shortest paths between the specified nodes
-                try:
-                    shortest_path_1 = nx.shortest_path(
-                        dpg_model, source=source_node, target=target_node_1
-                    )
-                except nx.NetworkXNoPath as e:
-                    # Handle the exception here
-                    if verbose:
-                        print(
-                            "No path between "
-                            + get_label(source_node, nodes_list)
-                            + " (source) and "
-                            + get_label(target_node_1, nodes_list)
-                            + " (target)."
-                        )
-                    continue
-
-                try:
-                    shortest_path_2 = nx.shortest_path(
-                        dpg_model, source=source_node, target=target_node_2)
-                    
-                except nx.NetworkXNoPath as e:
-                    # Handle the exception here
-                    if verbose:
-                        print(
-                            "No path between "
-                            + get_label(source_node, nodes_list)
-                            + " (source) and "
-                            + get_label(target_node_2, nodes_list)
-                            + " (target)."
-                        )
-                    continue
-
-                # Find the common node (last split node) between the two paths
-                last_common_node = find_last_common_node(shortest_path_1, shortest_path_2)
-                if last_common_node == None:
-                    continue
-                
-                dist_last_common_node_1 = nx.shortest_path_length(
-                    dpg_model, source=last_common_node, target=target_node_1
-                )
-                dist_last_common_node_2 = nx.shortest_path_length(
-                    dpg_model, source=last_common_node, target=target_node_2
-                )
-
-                # Find the weight to the closest nodes (out-branch)
-                dist_last_common_node_1_w = nx.shortest_path_length(
-                    dpg_model,
-                    source=last_common_node,
-                    target=target_node_1,
-                    weight="weight",
-                )
-                dist_last_common_node_2_w = nx.shortest_path_length(
-                    dpg_model,
-                    source=last_common_node,
-                    target=target_node_2,
-                    weight="weight",
-                )
-
-                node_score = compute_critical_node_score(dist_last_common_node_1,
-                    dist_last_common_node_2,
-                    dist_last_common_node_1_w,
-                    dist_last_common_node_2_w,
-                    n_estimators,
-                    n_training_samples
-                )
-
-                
-                if verbose:
-                    print(
-                        "The last common node (DTAIL) between "
-                        + get_label(target_node_1, nodes_list)
-                        + " and "
-                        + get_label(target_node_2, nodes_list)
-                        + " the two paths is: "
-                        + get_label(last_common_node, nodes_list)
-                    )
-
-                cn_list.append(
-                    [
-                        target_node_1,
-                        get_label(target_node_1, nodes_list),
-                        target_node_2,
-                        get_label(target_node_2, nodes_list),
-                        last_common_node,
-                        get_label(last_common_node, nodes_list),
-                        dist_last_common_node_1_w + dist_last_common_node_2_w,
-                        dist_last_common_node_1 + dist_last_common_node_2,
-                        node_score,
-                    ]
-                )
-
-    
-
-    # No CN was found
-    if len(cn_list)==0:
-        return None, None
-
-    cn_list.sort(key=lambda x: (x[4], x[5]))  # Sort based on CriticalNode and its label
-    
-    cn_list = pd.DataFrame(cn_list)
-    cn_list.columns = [
-        "Node1",
-        "Node1Label",
-        "Node2",
-        "Node2Label",
-        "CriticalNode",
-        "CriticalNodeLabel",
-        "SumDist",
-        "SumWeight",
-        "CriticalNodeScore",
-    ]
-    cn_list.sort_values(["CriticalNodeScore"], ascending=False).to_csv(
-        "CriticalNodeScore_all_edges.csv",
-        index=False
-    )
-    
-    if verbose:
-        print('cn_list',cn_list)
-
-    cn_list_summary = (
-        cn_list.groupby(["CriticalNode", "CriticalNodeLabel"])["CriticalNodeScore"]
-        .mean()
-        .reset_index()
-        .sort_values(["CriticalNodeScore"], ascending=False)
-    )
-    
-    targets = []
-    for idx, row in cn_list_summary.iterrows():
-        targets_value = ""
-        for cn_idx, cn_row in cn_list[cn_list['CriticalNode'] == row['CriticalNode']].iterrows():
-            targets_value += "|" + cn_row["Node1Label"] + '_x_' + cn_row["Node2Label"]
-        targets.append(targets_value)
-
-    cn_list_summary["Targets"] = targets
-    #df_dtail_summary.to_csv("CriticalNodeScore.csv", index=False)
-    if verbose:
-        print('cn_list_summary', cn_list_summary)
-
-    
-    return cn_list_summary, cn_list
-
-
-def compute_critical_node_score(dist_1, dist_2, weight_1, weight_2, n_estimators, n_training_samples):
-    # Calculate weights for individual paths
-    weight_ratio_1 = weight_1 / (n_estimators * n_training_samples)
-    weight_ratio_2 = weight_2 / (n_estimators * n_training_samples)
-
-    # Calculate scores for individual paths
-    score_1 = weight_ratio_1 / dist_1
-    score_2 = weight_ratio_2 / dist_2
-
-    # Compute the total critical node score
-    total_score = score_1 + score_2
-
-    return total_score
-
-
-def shortest_path_with_node(graph, source, target, intermediate_node):
-    try:
-        path_source_to_intermediate = nx.shortest_path(graph, source, intermediate_node)                    
-    except nx.NetworkXNoPath as e:
-        return None
-    try:
-        path_intermediate_to_target = nx.shortest_path(graph, intermediate_node, target)                  
-    except nx.NetworkXNoPath as e:
-        return None
-    
-    # Combine the paths, ensuring the intermediate node is used
-    if intermediate_node in path_source_to_intermediate and intermediate_node in path_intermediate_to_target:
-        path_source_to_intermediate.remove(intermediate_node)  # Remove the duplicate intermediate node
-        shortest_path = path_source_to_intermediate + path_intermediate_to_target
-        return shortest_path
-    return None
-
-def critical_nodes_performance(df,dpg_model,cn_list, nodes_list, X_train):
-    if cn_list is None:
-        return None
-
-    df_cn_perf = X_train
-    #print('features', df_cn_perf.columns)
-    df_cn_perf.columns = [str(col).rstrip().replace(' ', '_') for col in df_cn_perf.columns]
-    df_cn_perf.columns =  [re.sub(r'_\([^)]*\)', '', string) for string in df_cn_perf.columns]
-    df_cn_perf.columns =  [re.sub(r'/', '', string) for string in df_cn_perf.columns]
-
-
-    #print('features', df_cn_perf.columns)
-
-
-    df = df.sort_values(['Degree']).reset_index().iloc[:,1:]
-    prefix = "Class"
-    possible_roots = df[df["Closeness"] == 0].Node.values
-
-    nodes_list = sorted(nodes_list, key=lambda x: x[0])
-
-    # Checking Critical Nodes Coverage
-    cn_list_perf = []
-    for i, cn in cn_list.iterrows():
-        #print("****")
-        #print(cn["CriticalNodeLabel"])
-        #print('CNS', cn["CriticalNodeScore"])
-        #print('cn ', cn)
-        for root in possible_roots:
-            if not get_label(root, nodes_list).startswith(prefix):
-                source_node = root
-                required_node = cn["CriticalNode"]
-                target_node = cn["Node1"]
-                path = shortest_path_with_node(dpg_model, source_node, target_node, required_node)
-                if path != None:
-                    total_samples, true_predictions, current_class = get_path_classification(df, path, df_cn_perf, cn["Node1Label"])
-                    cn_list_perf.append([source_node, required_node, cn["CriticalNodeLabel"], np.round(cn["CriticalNodeScore"],4), target_node, total_samples, true_predictions, current_class, cn["Node1Label"]])
-
-                target_node = cn["Node2"]
-                path = shortest_path_with_node(dpg_model, source_node, target_node, required_node)
-                if path != None:
-                    total_samples, true_predictions, current_class = get_path_classification(df, path, df_cn_perf, cn["Node2Label"])
-                    cn_list_perf.append([source_node, required_node, cn["CriticalNodeLabel"], np.round(cn["CriticalNodeScore"],4), target_node, total_samples, true_predictions, current_class, cn["Node2Label"]])
-    cn_list_perf = pd.DataFrame(cn_list_perf, columns=["RootNode", "CriticalNode", "CriticalNodeLabel", "CriticalNodeScore","TargetNode", "TotalSamples", "TruePrediction", "Class", "ClassNode"])
-    cn_list_perf = cn_list_perf.sort_values(["CriticalNodeScore"], ascending=False)
-    #cn_list_perf.to_csv("cn_list_perf.csv")
-    #print(cn_list_perf)
-    return cn_list_perf
-
-    
-
-
-
-            
-
-def get_path_classification(df, path, df_cn_perf, target_node):
-    current_class = int(re.sub(r'\([^)]*\)', '', target_node).replace("Class ",""))
-
-    df_cn_paths = df[df.Node.isin(path)]
-    expressions = [re.sub(r'\([^)]*\)', '', string.rstrip()) for string in df_cn_paths["Label"].values.astype(str)]
-
-    pattern =  r'(\b\w+)\s+(\S+)\s+(\S+)'
-    expressions_with_underscore = [re.sub(pattern, r'\1_\2_\3', value) for value in expressions]
-    #print('expressions_with_underscore', expressions_with_underscore)
-
-    # Create a function to classify based on the logical expressions
-    def classify(row):
-        results = []
-        for expr in expressions_with_underscore:
-            if expr.startswith("Class"):
-                expr = expr.rstrip().replace(" ", "==").replace("Class", "target")
-            expr = re.sub(r'(_)([><=]+)', r' \2', expr)
-            expr = re.sub(r'([><=]+)(_)', r' \1', expr)
-            expr = expr.replace("/", "").replace("Class", "target")
-
-            result = eval(expr, row.to_dict())  # Pass the row data as a dictionary
-            results.append(result)
-        return all(results)
-    
-    df_cn_perf['Predicted_Class'] = df_cn_perf[df_cn_perf["target"]==current_class].apply(classify, axis=1)
-    
-    total_samples = df_cn_perf[df_cn_perf['target']==current_class].shape[0]
-    true_predictions = df_cn_perf[df_cn_perf['Predicted_Class']==True].shape[0]
-    #print('Total',total_samples)
-    #print('Predicted',true_predictions)
-    return total_samples, true_predictions, current_class
