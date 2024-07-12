@@ -6,14 +6,9 @@ import math
 import numpy as np
 
 import graphviz
-from itertools import combinations
 import networkx as nx
-from networkx.algorithms import approximation as approx # just for local_node_connectivity
 
 import hashlib
-
-
-np.random.seed(42)
 
 
 
@@ -355,7 +350,9 @@ def get_dpg_metrics(dpg_model, nodes_list):
     Returns:
     data: A dictionary containing the communities and class bounds extracted from the DPG model.
     """
-    
+    # Set the random seed for reproducibility
+    np.random.seed(42)
+
     # Create a dictionary to map node labels to their identifiers
     diz_nodes = {node[1] if "->" not in node[0] else None: node[0] for node in nodes_list}
     # Remove any None keys from the dictionary
