@@ -10,15 +10,37 @@ from .visualizer import plot_dpg
 
 
 def select_custom_dataset(path, target_column):
+    """
+    Loads a custom dataset from a CSV file, separates the target column, and prepares the data for modeling.
+
+    Args:
+    path: The file path to the CSV dataset.
+    target_column: The name of the column to be used as the target variable.
+
+    Returns:
+    data: A numpy array containing the feature data.
+    features: A numpy array containing the feature names.
+    target: A numpy array containing the target variable.
+    """
+    # Load the dataset from the specified CSV file
     df = pd.read_csv(path, sep=',')
+    
+    # Extract the target variable
     target = np.array(df[target_column])
+    
+    # Remove the target column from the dataframe
     df.drop(columns=[target_column], inplace=True)
+    
+    # Convert the feature data to a numpy array
     data = []
     for index, row in df.iterrows():
         data.append([row[j] for j in df.columns])
     data = np.array(data)
+    
+    # Extract feature names
     features = np.array([i for i in df.columns])
 
+    # Return the feature data, feature names, and target variable
     return data, features, target
 
 
@@ -28,10 +50,11 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
     Trains a Random Forest classifier on a selected dataset, evaluates its performance, and optionally plots the DPG.
 
     Args:
-    datasets: The name of the dataset to use.
+    datasets: The path to the custom dataset to use.
+    target_column: The name of the column to be used as the target variable.
     n_learners: The number of trees in the Random Forest.
     perc_var: Threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees.
-    decimal_threshold: Decimal precision of each feature. 
+    decimal_threshold: Decimal precision of each feature.
     file_name: The name of the file to save the evaluation results. If None, prints the results to the console.
     plot: Boolean indicating whether to plot the DPG. Default is False.
     save_plot_dir: Directory to save the plot image. Default is "examples/".
@@ -45,7 +68,7 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
     """
     
     # Load dataset
-    data, features, target = select_custom_dataset(datasets, target_column = target_column)
+    data, features, target = select_custom_dataset(datasets, target_column=target_column)
     
     # Split dataset into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(
@@ -64,14 +87,13 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
 
     # Print or save the evaluation results
     if file_name is not None:
-        f = open(file_name, "w")
-        f.write(f'Accuracy: {accuracy:.2f}\n')
-        f.write('\nConfusion Matrix:\n')
-        for i in confusion:
-            f.write(f'{str(i)}\n')
-        f.write('\nClassification Report:')
-        f.write(classification_rep)
-        f.close()
+        with open(file_name, "w") as f:
+            f.write(f'Accuracy: {accuracy:.2f}\n')
+            f.write('\nConfusion Matrix:\n')
+            for i in confusion:
+                f.write(f'{str(i)}\n')
+            f.write('\nClassification Report:')
+            f.write(classification_rep)
     else:
         print(f'Accuracy: {accuracy:.2f}')
         print('Confusion Matrix:')
