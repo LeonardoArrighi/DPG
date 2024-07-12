@@ -9,7 +9,7 @@ if __name__ == "__main__":
     parser.add_argument("--ds", type=str, default="iris", help="Basic dataset to be analyzed")
     parser.add_argument("--l", type=int, default=5, help="Number of learners for the Random Forest")
     parser.add_argument("--pv", type=float, default=0.001, help="Threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees.")
-    parser.add_argument("--t", type=int, default=1, help="Decimal precision of each feature")
+    parser.add_argument("--t", type=int, default=2, help="Decimal precision of each feature")
     parser.add_argument("--dir", type=str, default="examples/", help="Directory to save results")
     parser.add_argument("--plot", action='store_true', help="Plot the DPG, add the argument to use it as True")
     parser.add_argument("--save_plot_dir", type=str, default="examples/", help="Directory to save the plot image")
