@@ -9,9 +9,8 @@ from sklearn.datasets import (
     load_diabetes,
 )
 
-from .core import digraph_to_nx, get_dpg, get_critical_nodes, get_dpg_node_metrics, get_dpg_metrics, critical_nodes_performance
+from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
 from .visualizer import basic_plot, plot_rf2dpg, plot_custom_map, plot_communities_map, paper_plot
-from .plots import enriched_rf_importance, importance_vs_criticalscore, criticalscores_class, importance_vs_critical
 
 import networkx as nx
 import pandas as pd

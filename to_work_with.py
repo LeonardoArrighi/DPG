@@ -1,7 +1,7 @@
 import os
 import argparse
 
-import dpg.test_sklearn_work as test
+import dpg.sklearn_standard_dpg as test
 
 
 if __name__ == "__main__":
