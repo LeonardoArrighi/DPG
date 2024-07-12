@@ -396,10 +396,10 @@ def get_dpg_metrics(dpg_model, nodes_list):
 
 def get_dpg_node_metrics(dpg_model, nodes_list):
     """
-    Extracts metrics from the nodes of a Decision Predicate Graph (DPG) model.
+    Extracts metrics from the nodes of a DPG model.
 
     Args:
-    dpg_model: A NetworkX graph representing the Decision Predicate Graph.
+    dpg_model: A NetworkX graph representing the DPG.
     nodes_list: A list of nodes where each node is a tuple. The first element is the node identifier and the second is the node label.
 
     Returns:
@@ -442,7 +442,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
 
 def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold):
     """
-    Generates a Decision Predicate Graph (DPG) from training data and a random forest model.
+    Generates a DPG from training data and a random forest model.
 
     Args:
     X_train: A numpy array or similar structure containing the training data samples.
@@ -452,7 +452,7 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold):
     decimal_threshold: The number of decimal places to which thresholds are rounded.
 
     Returns:
-    dot: A Graphviz Digraph object representing the Decision Predicate Graph.
+    dot: A Graphviz Digraph object representing the DPG.
     """
     # Initialize an empty log to store the traces
     log = []
