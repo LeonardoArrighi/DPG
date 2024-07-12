@@ -410,7 +410,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
     # Calculate the out-degree (number of outgoing edges) for each node
     out_nodes = {node: dpg_model.out_degree(node) for node in list(dpg_model.nodes())}
     # Calculate the betweenness centrality for each node
-    betweness_centrality = nx.betweenness_centrality(dpg_model, weight='weight')
+    betweenness_centrality = nx.betweenness_centrality(dpg_model, weight='weight')
     # Calculate the local reaching centrality for each node
     local_reaching_centrality = {node: nx.local_reaching_centrality(dpg_model, node, weight='weight') for node in list(dpg_model.nodes())}
     
@@ -420,7 +420,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
         "Degree": list(degree.values()),                               # Total degree (in-degree + out-degree)
         "In degree nodes": list(in_nodes.values()),                    # Number of incoming edges
         "Out degree nodes": list(out_nodes.values()),                  # Number of outgoing edges
-        "Betweness centrality": list(betweness_centrality.values()),   # Betweenness centrality (useful for identifying bottlenecks)
+        "Betweenness centrality": list(betweenness_centrality.values()),   # Betweenness centrality (useful for identifying bottlenecks)
         "Local reaching centrality": list(local_reaching_centrality.values()),  # Local reaching centrality (useful for feature importance)
     }
 
