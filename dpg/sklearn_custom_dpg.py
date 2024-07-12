@@ -10,12 +10,8 @@ from sklearn.datasets import (
 )
 
 from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
-from .visualizer import basic_plot#, plot_rf2dpg, plot_custom_map, plot_communities_map
+from .visualizer import plot_dpg#, plot_custom_map#, plot_communities_map
 
-import networkx as nx
-import pandas as pd
-# from category_encoders import OneHotEncoder
-# from sklearn.compose import ColumnTransformer
 
 
 def select_dataset(name):
@@ -100,27 +96,9 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
         print("Warning: Less than two nodes resulted.")
         return
     
-    df_dpg_metrics = get_dpg_metrics(dpg_model, nodes_list)
+    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
     df = get_dpg_node_metrics(dpg_model, nodes_list)
     
-
-    # # FINDING CRITICAL NODE
-    # result = get_critical_nodes(df, dpg_model, nodes_list, len(rf_classifier.estimators_), X_train.shape[0], True)
-    # if result is not None:
-    #     cn_list, cn_list_items = result
-    #     length = len(cn_list)
-    #     # df_cn_perf = critical_nodes_performance(df,dpg_model,cn_list_items,nodes_list, pd.concat([pd.DataFrame(dt.data, columns=dt.feature_names), pd.DataFrame(dt.target, columns=['target'])], axis=1))
-    # else:
-    #     cn_list = None
-    #     length = 0
-    #     # df_cn_perf = None
-    #     print('## There is no critical nodes ##')
-    
-
-    # ------------ MODIFY ---------------
-    cn_list = None
-    length = 0
-
     if plot:
         plot_name = (
             datasets
@@ -132,19 +110,14 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
             + str(decimal_threshold)
         )
 
-        # # CHOOSE THE PLOT
-        basic_plot(plot_name, dot, df)
-        # plot_rf2dpg(plot_name, dot, cn_list)                                                                                  # # Standard graph
-        # plot_custom_map(plot_name, dot, df, attribute='Local reaching centrality', norm_flag=True, class_flag=False)          # # Metric graph
-        # plot_custom_map(plot_name, dot, df, attribute='Betweness centrality', norm_flag=True, class_flag=False)                # # Metric graph
-        # plot_communities_map(plot_name, dot, df, df_dpg_metrics['Communities'])                                               # # Communities graph
-
-    # importance_vs_criticalscore(rf_classifier, dtail_list, dt.feature_names)
-        
-    # criticalscores_class(dtail_list)
-
-    # importance_vs_critical(rf_classifier, dtail_list, pd.DataFrame(dt.data, columns=dt.feature_names), dt.feature_names)
-
-    # enriched_rf_importance(rf_classifier, dtail_list, dt.feature_names)
+        plot_dpg(
+            plot_name,
+            dot,
+            df,
+            df_dpg,
+            attribute='Betweness centrality',
+            # communities=True,
+            class_flag=True
+        )
     
-    return df, df_dpg_metrics, length#, df_cn_perf
+    return df, df_dpg
