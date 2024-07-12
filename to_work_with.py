@@ -1,7 +1,7 @@
 import os
 import argparse
 
-import fhg.test_sklearn_work as test
+import dpg.test_sklearn_work as test
 
 
 if __name__ == "__main__":
@@ -42,4 +42,4 @@ if __name__ == "__main__":
             f.write(riga)
         
     
-# python -W ignore to_work_with.py --ds iris --l 5 --pv 0 --t 2 --dir C:\\Users\\leonardo.arrighi\\Documents\\FHG\\R\\results\\metrics\\test
+# python -W ignore to_work_with.py --ds iris --l 5 --pv 0 --t 2 --plot --dir C:\\Users\\leonardo.arrighi\\Documents\\FHG\\R\\results\\metrics\\test

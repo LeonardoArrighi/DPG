@@ -9,8 +9,8 @@ from sklearn.datasets import (
     load_diabetes,
 )
 
-from .core import digraph_to_nx, get_fhg, get_critical_nodes, get_fhg_node_metrics, get_fhg_metrics, critical_nodes_performance
-from .visualizer import basic_plot, plot_rf2fhg, plot_custom_map, plot_communities_map, paper_plot
+from .core import digraph_to_nx, get_dpg, get_critical_nodes, get_dpg_node_metrics, get_dpg_metrics, critical_nodes_performance
+from .visualizer import basic_plot, plot_rf2dpg, plot_custom_map, plot_communities_map, paper_plot
 from .plots import enriched_rf_importance, importance_vs_criticalscore, criticalscores_class, importance_vs_critical
 
 import networkx as nx
@@ -89,28 +89,28 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
         print('Classification Report:')
         print(classification_rep)
 
-    # FHG Extraction
-    dot = get_fhg(X_train, dt.feature_names, rf_classifier, perc_var, decimal_threshold)
+    # dpg Extraction
+    dot = get_dpg(X_train, dt.feature_names, rf_classifier, perc_var, decimal_threshold)
     
-    # # FHG Extraction custom dataset
-    # dot = get_fhg(X_train, features, rf_classifier, perc_var, decimal_threshold)
+    # # dpg Extraction custom dataset
+    # dot = get_dpg(X_train, features, rf_classifier, perc_var, decimal_threshold)
     
-    fhg_model, nodes_list = digraph_to_nx(dot)
+    dpg_model, nodes_list = digraph_to_nx(dot)
 
     if len(nodes_list) < 2:
         print("Warning: Less than two nodes resulted.")
         return
     
-    df_fhg_metrics = get_fhg_metrics(fhg_model, nodes_list)
-    df = get_fhg_node_metrics(fhg_model, nodes_list)
+    df_dpg_metrics = get_dpg_metrics(dpg_model, nodes_list)
+    df = get_dpg_node_metrics(dpg_model, nodes_list)
     
 
     # # FINDING CRITICAL NODE
-    # result = get_critical_nodes(df, fhg_model, nodes_list, len(rf_classifier.estimators_), X_train.shape[0], True)
+    # result = get_critical_nodes(df, dpg_model, nodes_list, len(rf_classifier.estimators_), X_train.shape[0], True)
     # if result is not None:
     #     cn_list, cn_list_items = result
     #     length = len(cn_list)
-    #     # df_cn_perf = critical_nodes_performance(df,fhg_model,cn_list_items,nodes_list, pd.concat([pd.DataFrame(dt.data, columns=dt.feature_names), pd.DataFrame(dt.target, columns=['target'])], axis=1))
+    #     # df_cn_perf = critical_nodes_performance(df,dpg_model,cn_list_items,nodes_list, pd.concat([pd.DataFrame(dt.data, columns=dt.feature_names), pd.DataFrame(dt.target, columns=['target'])], axis=1))
     # else:
     #     cn_list = None
     #     length = 0
@@ -135,10 +135,10 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
 
         # # CHOOSE THE PLOT
         # paper_plot(plot_name, dot, df)
-        # plot_rf2fhg(plot_name, dot, cn_list)                                                                                  # # Standard graph
+        # plot_rf2dpg(plot_name, dot, cn_list)                                                                                  # # Standard graph
         plot_custom_map(plot_name, dot, df, attribute='Local reaching centrality', norm_flag=True, class_flag=False)          # # Metric graph
         # plot_custom_map(plot_name, dot, df, attribute='Betweness centrality', norm_flag=True, class_flag=False)                # # Metric graph
-        # plot_communities_map(plot_name, dot, df, df_fhg_metrics['Communities'])                                               # # Communities graph
+        # plot_communities_map(plot_name, dot, df, df_dpg_metrics['Communities'])                                               # # Communities graph
 
     # importance_vs_criticalscore(rf_classifier, dtail_list, dt.feature_names)
         
@@ -148,4 +148,4 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
 
     # enriched_rf_importance(rf_classifier, dtail_list, dt.feature_names)
     
-    return df, df_fhg_metrics, length#, df_cn_perf
+    return df, df_dpg_metrics, length#, df_cn_perf

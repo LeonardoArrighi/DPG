@@ -60,7 +60,7 @@ def basic_plot(plot_name, dot, df):
     plt.show()
 
 
-def plot_rf2fhg(plot_name, dot, cn_list):
+def plot_rf2dpg(plot_name, dot, cn_list):
     colormap = cm.viridis  # Choose a colormap (e.g., viridis)
     norm = None
     if cn_list is not None:
@@ -185,7 +185,7 @@ def plot_communities_map(plot_name, dot, df, communities_list):
 def change_node_color(graph, node_id, new_color):
     graph.body.append(f'{node_id} [fillcolor="{new_color}"]')
 
-def plot_sample_fhg(plot_name, dot_sample, dot, dtail_list):
+def plot_sample_dpg(plot_name, dot_sample, dot, dtail_list):
     max_score = dtail_list['CriticalNodeScore'].max()
     norm = mcolors.Normalize(0, max_score)  # Normalize the scores
 

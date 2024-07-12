@@ -1,36 +1,56 @@
-import graphviz
 import pandas as pd
 pd.set_option("display.max_colwidth", 255)
 import re
 import math
 
 import numpy as np
-np.random.seed(42)
 
+import graphviz
 from itertools import combinations
 import networkx as nx
 from networkx.algorithms import approximation as approx # just for local_node_connectivity 
 from collections import Counter
 
 import hashlib
-import re
+
+
+np.random.seed(42)
+
 
 def digraph_to_nx(graphviz_graph):
-    networkx_graph = nx.DiGraph()
-    nodes_list = []
+    '''
+    This function converts a Graphviz directed graph (DiGraph) to a NetworkX directed graph (DiGraph).
+    It also extracts node descriptions and edge weights from the Graphviz graph.
 
+    Args:
+    graphviz_graph: The input Graphviz directed graph.
+
+    Returns:
+    networkx_graph: The converted NetworkX directed graph.
+    nodes_list: A sorted list of nodes with their descriptions.
+    '''
+    
+    # Create an empty directed graph in NetworkX
+    networkx_graph = nx.DiGraph()
+    
+    # Initialize a list to store nodes and a list to store edges with their weights
+    nodes_list = []
     edges = []
     weights = {}
 
     # Extract nodes and edges from the graphviz graph
     for edge in graphviz_graph.body:
+        # Check if the line represents an edge (contains '->')
         if "->" in edge:
+            # Extract source and destination nodes
             src, dest = edge.split("->")
             src = src.strip()
             dest = dest.split(" [label=")[0].strip()
 
-            # Extract weight from edge attributes (if available)
+            # Initialize weight to None
             weight = None
+            
+            # Extract weight from edge attributes if available
             if "[label=" in edge:
                 attr = edge.split("[label=")[1].split("]")[0].split(" ")[0]
                 weight = (
@@ -38,18 +58,19 @@ def digraph_to_nx(graphviz_graph):
                     if attr.isdigit() or attr.replace(".", "").isdigit()
                     else None
                 )
-                weights[(src, dest)] = weight
+                weights[(src, dest)] = weight  # Store weight for the edge
 
+            # Add the edge to the list
             edges.append((src, dest))
 
-        # Creating the nodes_list
+        # Check if the line represents a node with attributes (contains '[label=')
         if "[label=" in edge:
             id, desc = edge.split("[label=")
-            id = id.replace("\t", "")
+            id = id.replace("\t", "")  # Clean up the node ID
             id = id.replace(" ", "")
-            desc = desc.split(" fillcolor=")[0]
+            desc = desc.split(" fillcolor=")[0]  # Extract node description
             desc = desc.replace('"', "")
-            nodes_list.append([id, desc])
+            nodes_list.append([id, desc])  # Add node to the list
 
     # Sort edges and nodes
     edges = sorted(edges)
@@ -58,12 +79,15 @@ def digraph_to_nx(graphviz_graph):
     # Add nodes and edges to the NetworkX graph
     for edge in edges:
         src, dest = edge
+        # Add edge with weight if available, else add without weight
         if (src, dest) in weights:
             networkx_graph.add_edge(src, dest, weight=weights[(src, dest)])
         else:
             networkx_graph.add_edge(src, dest)
 
+    # Return the constructed NetworkX graph and the list of nodes
     return networkx_graph, nodes_list
+
 
 
 def tracing_rf(case_id, sample, rf_classifier, feature_names, decimal_threshold=1):
@@ -146,7 +170,7 @@ def generate_dot(dfg, log):
     """
     act_count = Counter(log["concept:name"])
     dot = graphviz.Digraph(
-        "FHG",
+        "dpg",
         engine="dot",
         graph_attr={
             "bgcolor": "white",
@@ -189,9 +213,9 @@ def generate_dot(dfg, log):
     return dot
 
 
-def get_fhg_metrics(fhg_model, nodes_list):
+def get_dpg_metrics(dpg_model, nodes_list):
     """
-    Extract metrics from FHG
+    Extract metrics from dpg
     """
     
 
@@ -204,9 +228,9 @@ def get_fhg_metrics(fhg_model, nodes_list):
     for key_1, value_1 in diz_nodes.items():
         for key_2, value_2 in diz_nodes.items():
             if ('Class' in key_1) and ('Class' in key_2) and (key_1 != key_2):
-                local_node_connectivity.append([key_1, key_2, approx.local_node_connectivity(fhg_model, value_1, value_2)])
+                local_node_connectivity.append([key_1, key_2, approx.local_node_connectivity(dpg_model, value_1, value_2)])
 
-    bridges = nx.bridges(fhg_model.to_undirected())
+    bridges = nx.bridges(dpg_model.to_undirected())
     bridges_stack = []
     for sets in bridges:
         new_sets = set()
@@ -214,16 +238,16 @@ def get_fhg_metrics(fhg_model, nodes_list):
             new_sets.add(diz_nodes_reversed[str(node)])
         bridges_stack.append(new_sets)
     
-    cut_vertex = nx.articulation_points(fhg_model.to_undirected())
+    cut_vertex = nx.articulation_points(dpg_model.to_undirected())
     cut_vertex_stack = []
     for vertex in cut_vertex:
         if 'Class' not in str(diz_nodes_reversed[str(vertex)]):
             cut_vertex_stack.append(diz_nodes_reversed[str(vertex)])
     
     
-    weakly_connected_components = nx.number_weakly_connected_components(fhg_model)
+    weakly_connected_components = nx.number_weakly_connected_components(dpg_model)
 
-    asyn_lpa_communities = nx.community.asyn_lpa_communities(fhg_model, weight='weight') # # find communities
+    asyn_lpa_communities = nx.community.asyn_lpa_communities(dpg_model, weight='weight') # # find communities
     asyn_lpa_communities_stack = []
     for sets in asyn_lpa_communities:
         new_sets = set()
@@ -251,14 +275,14 @@ def get_fhg_metrics(fhg_model, nodes_list):
     print(len(asyn_lpa_communities_bounds['Class 1']))
 
 
-    overall_reciprocity = nx.overall_reciprocity(fhg_model)
+    overall_reciprocity = nx.overall_reciprocity(dpg_model)
 
-    if nx.is_directed_acyclic_graph(fhg_model):
+    if nx.is_directed_acyclic_graph(dpg_model):
 
         ancestors = {}
         for key, value in diz_nodes.items():
             if ('Class' in key):
-                sets = nx.ancestors(fhg_model, value)
+                sets = nx.ancestors(dpg_model, value)
                 new_sets = set()
                 for node in sets:
                     new_sets.add(diz_nodes_reversed[str(node)])
@@ -266,8 +290,8 @@ def get_fhg_metrics(fhg_model, nodes_list):
 
         descendants = {}
         for key, value in diz_nodes.items():
-            if (fhg_model.in_degree(value) == 0):
-                sets = nx.descendants(fhg_model, value)
+            if (dpg_model.in_degree(value) == 0):
+                sets = nx.descendants(dpg_model, value)
                 new_sets = set()
                 for node in sets:
                     new_sets.add(diz_nodes_reversed[str(node)])
@@ -277,21 +301,21 @@ def get_fhg_metrics(fhg_model, nodes_list):
         for key_1, value_1 in diz_nodes.items():
             for key_2, value_2 in diz_nodes.items():
                 if ('Class' in key_1) and ('Class' in key_2) and (key_1 != key_2):
-                    common.append([key_1, key_2, diz_nodes_reversed[str(nx.lowest_common_ancestor(fhg_model, value_1, value_2))]])
+                    common.append([key_1, key_2, diz_nodes_reversed[str(nx.lowest_common_ancestor(dpg_model, value_1, value_2))]])
         
         # symple_cycles = 0
     
     else:
         ancestors = descendants = common = "The DHG model is not directed acyclic."
 
-        #symple_cycles = len([i for i in nx.simple_cycles(fhg_model)])
+        #symple_cycles = len([i for i in nx.simple_cycles(dpg_model)])
         
     predecessors = {}
     for key_1, value_1 in diz_nodes.items():
         if ('Class' in key_1):
             predecessors[key_1] = []
             for key_2, value_2 in diz_nodes.items():
-                if (key_1 != key_2) and nx.has_path(fhg_model, value_2, value_1):
+                if (key_1 != key_2) and nx.has_path(dpg_model, value_2, value_1):
                     predecessors[key_1].append(key_2)
 
     class_bounds = calculate_boundaries(predecessors)
@@ -354,30 +378,30 @@ def calculate_boundaries(dict):
     return boundaries_class
 
 
-def get_fhg_node_metrics(fhg_model, nodes_list):
+def get_dpg_node_metrics(dpg_model, nodes_list):
     """
-    Extract metrics from FHG's nodes
+    Extract metrics from dpg's nodes
     """
 
-    degree = dict(nx.degree(fhg_model))
-    closeness = nx.closeness_centrality(fhg_model)
-    d_nodes = {node : fhg_model.degree(node) for node in list(fhg_model.nodes())}
-    d_centrality = nx.degree_centrality(fhg_model)
-    in_nodes = {node : fhg_model.in_degree(node) for node in list(fhg_model.nodes())}
-    in_centrality = nx.in_degree_centrality(fhg_model)
-    out_nodes = {node : fhg_model.out_degree(node) for node in list(fhg_model.nodes())}
-    out_centrality = nx.out_degree_centrality(fhg_model)
+    degree = dict(nx.degree(dpg_model))
+    closeness = nx.closeness_centrality(dpg_model)
+    d_nodes = {node : dpg_model.degree(node) for node in list(dpg_model.nodes())}
+    d_centrality = nx.degree_centrality(dpg_model)
+    in_nodes = {node : dpg_model.in_degree(node) for node in list(dpg_model.nodes())}
+    in_centrality = nx.in_degree_centrality(dpg_model)
+    out_nodes = {node : dpg_model.out_degree(node) for node in list(dpg_model.nodes())}
+    out_centrality = nx.out_degree_centrality(dpg_model)
     bottleneck_centrality = {node : in_centrality[node] / out_centrality[node] if out_centrality[node] != 0 else 0 for node in in_centrality}
-    eigenvector_centrality = nx.eigenvector_centrality(fhg_model, max_iter=10000, weight = 'weight')
-    betweness_centrality = nx.betweenness_centrality(fhg_model, weight='weight')
-    #katz_centrality = nx.katz_centrality(fhg_model, max_iter = 1000, normalized = True, weight = 'weight')
-    local_reaching_centrality = {node : nx.local_reaching_centrality(fhg_model, node, weight = 'weight') for node in list(fhg_model.nodes())}
-    constraint = nx.constraint(fhg_model, weight='weight')
+    eigenvector_centrality = nx.eigenvector_centrality(dpg_model, max_iter=10000, weight = 'weight')
+    betweness_centrality = nx.betweenness_centrality(dpg_model, weight='weight')
+    #katz_centrality = nx.katz_centrality(dpg_model, max_iter = 1000, normalized = True, weight = 'weight')
+    local_reaching_centrality = {node : nx.local_reaching_centrality(dpg_model, node, weight = 'weight') for node in list(dpg_model.nodes())}
+    constraint = nx.constraint(dpg_model, weight='weight')
     
     
     # Create a DataFrame with node metrics
     data_node = {
-        "Node": list(fhg_model.nodes()), # # !
+        "Node": list(dpg_model.nodes()), # # !
         "Degree": list(degree.values()), # # !
         "Closeness": list(closeness.values()), # # !
         "Degree nodes": list(d_nodes.values()),                                 # # edges linked
@@ -405,7 +429,7 @@ def get_fhg_node_metrics(fhg_model, nodes_list):
     return df
 
 
-def get_fhg(X_train, feature_names, model, perc_var, decimal_threshold):
+def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold):
     log = []
     for i, sample in enumerate(X_train):
         log.extend(tracing_rf(i, sample, model, feature_names, decimal_threshold))
@@ -442,7 +466,7 @@ def find_last_common_node(path1, path2):
                 return(node1)
     return None
 
-def get_critical_nodes(df, fhg_model, nodes_list, n_estimators, n_training_samples, verbose=False):
+def get_critical_nodes(df, dpg_model, nodes_list, n_estimators, n_training_samples, verbose=False):
     df = df.sort_values(['Degree']).reset_index().iloc[:,1:]
     prefix = "Class"
     matching_items = df[df["Label"].str.startswith(prefix)]["Node"]
@@ -467,7 +491,7 @@ def get_critical_nodes(df, fhg_model, nodes_list, n_estimators, n_training_sampl
                 # Calculate the shortest paths between the specified nodes
                 try:
                     shortest_path_1 = nx.shortest_path(
-                        fhg_model, source=source_node, target=target_node_1
+                        dpg_model, source=source_node, target=target_node_1
                     )
                 except nx.NetworkXNoPath as e:
                     # Handle the exception here
@@ -483,7 +507,7 @@ def get_critical_nodes(df, fhg_model, nodes_list, n_estimators, n_training_sampl
 
                 try:
                     shortest_path_2 = nx.shortest_path(
-                        fhg_model, source=source_node, target=target_node_2)
+                        dpg_model, source=source_node, target=target_node_2)
                     
                 except nx.NetworkXNoPath as e:
                     # Handle the exception here
@@ -503,21 +527,21 @@ def get_critical_nodes(df, fhg_model, nodes_list, n_estimators, n_training_sampl
                     continue
                 
                 dist_last_common_node_1 = nx.shortest_path_length(
-                    fhg_model, source=last_common_node, target=target_node_1
+                    dpg_model, source=last_common_node, target=target_node_1
                 )
                 dist_last_common_node_2 = nx.shortest_path_length(
-                    fhg_model, source=last_common_node, target=target_node_2
+                    dpg_model, source=last_common_node, target=target_node_2
                 )
 
                 # Find the weight to the closest nodes (out-branch)
                 dist_last_common_node_1_w = nx.shortest_path_length(
-                    fhg_model,
+                    dpg_model,
                     source=last_common_node,
                     target=target_node_1,
                     weight="weight",
                 )
                 dist_last_common_node_2_w = nx.shortest_path_length(
-                    fhg_model,
+                    dpg_model,
                     source=last_common_node,
                     target=target_node_2,
                     weight="weight",
@@ -639,7 +663,7 @@ def shortest_path_with_node(graph, source, target, intermediate_node):
         return shortest_path
     return None
 
-def critical_nodes_performance(df,fhg_model,cn_list, nodes_list, X_train):
+def critical_nodes_performance(df,dpg_model,cn_list, nodes_list, X_train):
     if cn_list is None:
         return None
 
@@ -671,13 +695,13 @@ def critical_nodes_performance(df,fhg_model,cn_list, nodes_list, X_train):
                 source_node = root
                 required_node = cn["CriticalNode"]
                 target_node = cn["Node1"]
-                path = shortest_path_with_node(fhg_model, source_node, target_node, required_node)
+                path = shortest_path_with_node(dpg_model, source_node, target_node, required_node)
                 if path != None:
                     total_samples, true_predictions, current_class = get_path_classification(df, path, df_cn_perf, cn["Node1Label"])
                     cn_list_perf.append([source_node, required_node, cn["CriticalNodeLabel"], np.round(cn["CriticalNodeScore"],4), target_node, total_samples, true_predictions, current_class, cn["Node1Label"]])
 
                 target_node = cn["Node2"]
-                path = shortest_path_with_node(fhg_model, source_node, target_node, required_node)
+                path = shortest_path_with_node(dpg_model, source_node, target_node, required_node)
                 if path != None:
                     total_samples, true_predictions, current_class = get_path_classification(df, path, df_cn_perf, cn["Node2Label"])
                     cn_list_perf.append([source_node, required_node, cn["CriticalNodeLabel"], np.round(cn["CriticalNodeScore"],4), target_node, total_samples, true_predictions, current_class, cn["Node2Label"]])
