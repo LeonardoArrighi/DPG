@@ -1,7 +1,8 @@
 import os
 import argparse
 
-import dpg.sklearn_standard_dpg as test
+# import dpg.sklearn_standard_dpg as test
+import dpg.sklearn_custom_dpg as test
 
 
 if __name__ == "__main__":
@@ -16,23 +17,24 @@ if __name__ == "__main__":
 
 
 
-    df, df_fhg_metrics = test.test_base_sklearn(datasets = args.ds, 
-                                           n_learners = args.l, 
-                                           perc_var = args.pv, 
-                                           decimal_threshold = args.t, 
-                                           file_name = os.path.join(args.dir, f'iris_l{args.l}_pv{args.pv}_t{args.t}_stats.txt'), 
-                                           plot = args.plot, 
-                                           save_plot_dir="examples/", 
-                                           attribute=None, 
-                                           communities=False, 
-                                           class_flag=True)
-    
+    df, df_fhg_metrics = test.test_base_sklearn(datasets = args.ds,
+                                        target_column='Class',
+                                        n_learners = args.l, 
+                                        perc_var = args.pv, 
+                                        decimal_threshold = args.t, 
+                                        file_name = os.path.join(args.dir, f'dataset_l{args.l}_pv{args.pv}_t{args.t}_stats.txt'), 
+                                        plot = args.plot, 
+                                        save_plot_dir="examples/", 
+                                        attribute=None, 
+                                        communities=False, 
+                                        class_flag=True)
+
     df.sort_values(['Degree'])
 
-    df.to_csv(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_node_metrics.csv'),
+    df.to_csv(os.path.join(args.dir, f'dataset_l{args.l}_pv{args.pv}_t{args.t}_node_metrics.csv'),
                 encoding='utf-8')
 
-    with open(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_fhg_metrics.txt'), 'w') as f:
+    with open(os.path.join(args.dir, f'dataset_l{args.l}_pv{args.pv}_t{args.t}_dpg_metrics.txt'), 'w') as f:
         for key, value in df_fhg_metrics.items():
             riga = f"{key}: {value}\n"
             f.write(riga)
