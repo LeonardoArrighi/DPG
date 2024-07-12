@@ -10,7 +10,7 @@ from sklearn.datasets import (
 )
 
 from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
-from .visualizer import basic_plot#, plot_rf2dpg, plot_custom_map, plot_communities_map
+from .visualizer import plot_dpg#, plot_custom_map#, plot_communities_map
 
 import networkx as nx
 import pandas as pd
@@ -100,7 +100,7 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
         print("Warning: Less than two nodes resulted.")
         return
     
-    df_dpg_metrics = get_dpg_metrics(dpg_model, nodes_list)
+    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
     df = get_dpg_node_metrics(dpg_model, nodes_list)
     
 
@@ -133,11 +133,20 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
         )
 
         # # CHOOSE THE PLOT
-        basic_plot(plot_name, dot, df)
-        # plot_rf2dpg(plot_name, dot, cn_list)                                                                                  # # Standard graph
+        plot_dpg(
+            plot_name,
+            dot,
+            df,
+            df_dpg,
+            attribute='Betweness centrality',
+            # communities=True,
+            class_flag=True
+        )
+        # # basic_plot(plot_name, dot, df)
+        # # plot_rf2dpg(plot_name, dot, cn_list)                                                                                  # # Standard graph
         # plot_custom_map(plot_name, dot, df, attribute='Local reaching centrality', norm_flag=True, class_flag=False)          # # Metric graph
         # plot_custom_map(plot_name, dot, df, attribute='Betweness centrality', norm_flag=True, class_flag=False)                # # Metric graph
-        # plot_communities_map(plot_name, dot, df, df_dpg_metrics['Communities'])                                               # # Communities graph
+        # plot_communities_map(plot_name, dot, df, df_dpg['Communities'])                                               # # Communities graph
 
     # importance_vs_criticalscore(rf_classifier, dtail_list, dt.feature_names)
         
@@ -147,4 +156,4 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
 
     # enriched_rf_importance(rf_classifier, dtail_list, dt.feature_names)
     
-    return df, df_dpg_metrics, length#, df_cn_perf
+    return df, df_dpg, length#, df_cn_perf
