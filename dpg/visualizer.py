@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 from PIL import Image
 from .utils import highlight_class_node, change_node_color, delete_folder_contents
 
-def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, communities=False, class_flag=True):
+def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, communities=False, class_flag=False):
     """
     Plots a Decision Predicate Graph (DPG) with various customization options.
 
@@ -17,7 +17,7 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
     save_dir: Directory to save the plot image. Default is "examples/".
     attribute: A specific node attribute to visualize. Default is None.
     communities: Boolean indicating whether to visualize communities. Default is False.
-    class_flag: Boolean indicating whether to highlight class nodes. Default is True.
+    class_flag: Boolean indicating whether to highlight class nodes. Default is False.
 
     Returns:
     None
@@ -36,14 +36,14 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
     elif attribute is not None and not communities:
         colormap = cm.Blues  # Choose a colormap
         norm = None
-        
+
         # Highlight class nodes if class_flag is True
         if class_flag:
             for index, row in df.iterrows():
                 if 'Class' in row['Label']:
                     change_node_color(dot, row['Node'], '#ffc000')  # Yellow for class nodes
             df = df[~df.Label.str.contains('Class')].reset_index(drop=True)  # Exclude class nodes from further processing
-
+        
         # Normalize the attribute values if norm_flag is True
         max_score = df[attribute].max()
         norm = mcolors.Normalize(0, max_score)
@@ -64,7 +64,7 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
         if class_flag:
             for index, row in df.iterrows():
                 if 'Class' in row['Label']:
-                    change_node_color(dot, row['Node'], '#f7ef79')  # Yellow for class nodes
+                    change_node_color(dot, row['Node'], '#ffc000')  # Yellow for class nodes
             df = df[~df.Label.str.contains('Class')].reset_index(drop=True)  # Exclude class nodes from further processing
 
         # Map labels to community indices

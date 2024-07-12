@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_plot_dir", type=str, default="examples/", help="Directory to save the plot image")
     parser.add_argument("--attribute", type=str, default=None, help="A specific node attribute to visualize")
     parser.add_argument("--communities", action='store_true', help="Boolean indicating whether to visualize communities, add the argument to use it as True")
-    parser.add_argument("--class_flag", type=str, default=True, help="Boolean indicating whether to highlight class nodes")
+    parser.add_argument("--class_flag", action='store_true', help="Boolean indicating whether to highlight class nodes, add the argument to use it as True")
     args = parser.parse_args()
 
 
