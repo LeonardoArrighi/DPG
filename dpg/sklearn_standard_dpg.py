@@ -10,7 +10,7 @@ from sklearn.datasets import (
 )
 
 from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
-from .visualizer import basic_plot, plot_rf2dpg, plot_custom_map, plot_communities_map, paper_plot
+from .visualizer import basic_plot#, plot_rf2dpg, plot_custom_map, plot_communities_map
 
 import networkx as nx
 import pandas as pd
@@ -133,9 +133,9 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, plot=Fa
         )
 
         # # CHOOSE THE PLOT
-        # paper_plot(plot_name, dot, df)
+        basic_plot(plot_name, dot, df)
         # plot_rf2dpg(plot_name, dot, cn_list)                                                                                  # # Standard graph
-        plot_custom_map(plot_name, dot, df, attribute='Local reaching centrality', norm_flag=True, class_flag=False)          # # Metric graph
+        # plot_custom_map(plot_name, dot, df, attribute='Local reaching centrality', norm_flag=True, class_flag=False)          # # Metric graph
         # plot_custom_map(plot_name, dot, df, attribute='Betweness centrality', norm_flag=True, class_flag=False)                # # Metric graph
         # plot_communities_map(plot_name, dot, df, df_dpg_metrics['Communities'])                                               # # Communities graph
 
