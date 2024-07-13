@@ -8,7 +8,7 @@ DPG provides descriptive metrics that enhance the understanding of the decisions
 </p>
 
 ----------
-### The structure
+## The structure
 The concept behind DPG is to convert a generic tree-based ensemble model for classification into a graph, where:
 - Nodes represent predicates, i.e., the feature-value associations present in each node of every tree;
 - Edges denote the frequency with which these predicates are satisfied during the model training phase by the samples of the dataset.
@@ -18,7 +18,7 @@ The concept behind DPG is to convert a generic tree-based ensemble model for cla
 </p>
 
 ----------
-### Metrics
+## Metrics
 The graph-based nature of DPG provides significant enhancements in the direction of a complete mapping of the ensemble structure.
 | Property     | Definition | Utility |
 |--------------|------------|---------|
