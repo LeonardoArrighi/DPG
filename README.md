@@ -5,6 +5,6 @@ The concept behind DPG is to convert a generic tree-based ensemble model for cla
 - Nodes represent predicates, i.e., the feature-value associations present in each node of every tree;
 - Edges denote the frequency with which these predicates are satisfied during the model training phase by the samples of the dataset.
 
-![visualization](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true
-)
-<img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true" width="256" height="256"> 
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true" width="500" />
+</p>
