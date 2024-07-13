@@ -7,3 +7,4 @@ The concept behind DPG is to convert a generic tree-based ensemble model for cla
 
 ![visualization](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true
 )
+<img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true" width="256" height="256"> 
