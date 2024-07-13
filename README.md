@@ -1,7 +1,7 @@
 # Decision Predicate Graph (DPG)
 DPG is a model-agnostic tool to provide a global interpretation of tree-based ensemble models, addressing transparenct and explainability challenges.
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/custom_l2.jpg?raw=true" width="500" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/custom_l2.jpg?raw=true" width="600" />
 </p>
 
 ----------
