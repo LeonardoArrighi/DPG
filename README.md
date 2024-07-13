@@ -25,3 +25,8 @@ The graph-based nature of DPG provides significant enhancements in the direction
 |Betweenness Centrality | Quantifies the fraction of all the shortest paths between every pair of nodes of the graph passing through the considered node. | Identify potential bottleneck nodes that correspond to crucial decisions. |
 | Local Reaching Centrality | Quantifies the proportion of other nodes reachable from the local node through its outgoing edges. | Assess the importance of nodes similarly to feature importance, but enrich the information by encompassing the values associated with features across all decisions. |
 | Community | A subset of nodes of the DPG which is characterised by dense interconnections between its elements and sparse connections with the other nodes of the DPG that do not belong to the community. | Understanding the characteristics of nodes to be assigned to a particular community class, identifying predominant predicates, and those that play a marginal role in the classification process. |
+
+
+|Constraints | Betweenness Centrality | Local Reaching Centrality | Community|
+|------------|------------|--------------|--------------------|
+![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_constraints.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_bc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_lrc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_community.png) | 
