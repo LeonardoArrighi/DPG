@@ -1,5 +1,6 @@
 # Decision Predicate Graph (DPG)
 DPG is a model-agnostic tool to provide a global interpretation of tree-based ensemble models, addressing transparency and explainability challenges.
+
 DPG is a graph structure that captures the tree-based ensemble model and learned dataset details, preserving the relations among features, logical decisions, and predictions towards emphasising insightful points.
 DPG enables graph-based evaluations and the identification of model decisions towards facilitating comparisons between features and their associated values while offering insights into the entire model.
 DPG provides descriptive metrics that enhance the understanding of the decisions inherent in the model, offering valuable insights.
