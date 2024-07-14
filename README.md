@@ -38,6 +38,37 @@ The library contains two different scripts to apply DPG:
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
 ---
-Random Forest, an example of tree-based ensemble model, is already implemented within the scripts used by DPG. 
+Random Forest, an example of a tree-based ensemble model, is already implemented within the scripts used by DPG. 
 
-Specifically, it is within `sklearn_standard_dpg.py`
+Specifically, the model is within `sklearn_standard_dpg.py`/`sklearn_custom_dpg.py`, the scripts used to manage the dataset, train the model, apply DPG, and apply the metrics.
+Some Random Forest parameters cannot be modified outside the script where they are defined due to implementation choice.
+
+---
+The library also contains two other essential scripts:
+- `core.py` contains all the functions used to calculate and create the DPG and the metrics.
+- `visualizer.py` contains the functions used to manage the visualization of DPG.
+
+---
+The DPG application, through `dpg_standard.py` or `dpg_custom.py`, produces several files:
+- the visualization of DPG in a dedicated environment, which can be zoomed and saved;
+- a `.txt` file containing the DPG metrics;
+- a `.csv` file containing the information about all the nodes of the DPG and their associated metrics;
+- a `.txt` file containing the Random Forest statistics (accuracy, confusion matrix, classification report)
+
+## Easy usage
+Usage: `python dpg_standard.py --ds <dataset_name> --l <integer_number> --pv <threshold_value> --t <integer_number> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
+Where:
+- `ds` is the name of the standard classification `sklearn` dataset to be analyzed;
+- `l` is the number of base learners for the Random Forest;
+- `pv` is the threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees;
+- `t` is the decimal precision of each feature;
+- `dir` is the path of the directory to save the files;
+- `plot` is a store_true variable which can be added to plot the DPG;
+- `save_plot_dir` is path of the directory to save the plot image;
+- `attribute` is the specific node metric which can be visualized on the DPG;
+- `communities` is a store_true variable which can be added to visualize communities on the DPG;
+- `class_flag` is a store_true variable which can be added to highlight class nodes.
+
+The usage of `dpg_custom.py` is similar, but it requires another parameter:
+- `target_column`, which is the name of the column to be used as the target variable;
+- while `ds` is the path of the directory where the dataset is.
