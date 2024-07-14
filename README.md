@@ -33,22 +33,24 @@ The graph-based nature of DPG provides significant enhancements in the direction
 |Constraints(Class 1) = val3 < F1 ≤ val1, F2 ≤ val2 | BC(F2 ≤ val2) = 4/24 | LRC(F1 ≤ val1) = 6 / 7 | Community(Class 1) = F1 ≤ val1, F2 ≤ val2 |
 
 ## The DPG library
+
+#### Main script
 The library contains two different scripts to apply DPG:
 - `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
----
+#### Tree-based ensemble model: Random Forest
 Random Forest, an example of a tree-based ensemble model, is already implemented within the scripts used by DPG. 
 
 Specifically, the model is within `sklearn_standard_dpg.py`/`sklearn_custom_dpg.py`, the scripts used to manage the dataset, train the model, apply DPG, and apply the metrics.
 Some Random Forest parameters cannot be modified outside the script where they are defined due to implementation choice.
 
----
+#### Metrics and visualization
 The library also contains two other essential scripts:
 - `core.py` contains all the functions used to calculate and create the DPG and the metrics.
 - `visualizer.py` contains the functions used to manage the visualization of DPG.
 
----
+#### Output
 The DPG application, through `dpg_standard.py` or `dpg_custom.py`, produces several files:
 - the visualization of DPG in a dedicated environment, which can be zoomed and saved;
 - a `.txt` file containing the DPG metrics;
