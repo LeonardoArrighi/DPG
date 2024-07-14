@@ -76,7 +76,7 @@ The usage of `dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
 - while `ds` is the path of the directory where the dataset is.
 
----
+***
 ## Citation
 If you use this for research, please cite. Here is an example BibTeX entry:
 
