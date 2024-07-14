@@ -32,10 +32,12 @@ The graph-based nature of DPG provides significant enhancements in the direction
 ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_constraints.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_bc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_lrc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/examples/example_community.png) |
 |Constraints(Class 1) = val3 < F1 ≤ val1, F2 ≤ val2 | BC(F2 ≤ val2) = 4/24 | LRC(F1 ≤ val1) = 6 / 7 | Community(Class 1) = F1 ≤ val1, F2 ≤ val2 |
 
-## Easy usage
+## The DPG library
 The library contains two different scripts to apply DPG:
 - `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
 ---
-ehi
+Random Forest, an example of tree-based ensemble model, is already implemented within the scripts used by DPG. 
+
+Specifically, it is within `sklearn_standard_dpg.py`
