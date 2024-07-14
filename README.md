@@ -37,5 +37,5 @@ The library contains two different scripts to apply DPG:
 - `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
-------
+---
 ehi
