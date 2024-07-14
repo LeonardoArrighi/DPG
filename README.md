@@ -68,6 +68,7 @@ Where:
 - `attribute` is the specific node metric which can be visualized on the DPG;
 - `communities` is a store_true variable which can be added to visualize communities on the DPG;
 - `class_flag` is a store_true variable which can be added to highlight class nodes.
+Disclaimer: `attribute` and `communities` can not be added together, since DPG supports just one of the two visualizations.
 
 The usage of `dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
