@@ -75,3 +75,19 @@ Disclaimer: `attribute` and `communities` can not be added together, since DPG s
 The usage of `dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
 - while `ds` is the path of the directory where the dataset is.
+
+## Citation
+If you use this for research, please cite. Here is an example BibTeX entry:
+
+
+```
+@misc{arrighi2024dpg,
+      title={Decision Predicate Graphs: Enhancing Interpretability in Tree Ensembles}, 
+      author={Leonardo Arrighi and Luca Pennella and Gabriel Marques Tavares and Sylvio Barbon Junior},
+      year={2024},
+      eprint={2404.02942},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2404.02942}, 
+}
+```
