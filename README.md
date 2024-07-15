@@ -78,6 +78,15 @@ The usage of `dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
 - while `ds` is the path of the directory where the dataset is.
 
+#### Example `dpg_standard.py`
+Some examples can be appreciated in the `examples` folder: https://github.com/LeonardoArrighi/DPG/tree/main/examples
+
+In particular, the following DPG is obtained by transforming a Random Forest with 5 base learners, trained on Iris dataset.
+The used command is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples`
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2.png" width="600" />
+</p>
+
 ***
 ## Citation
 If you use this for research, please cite. Here is an example BibTeX entry:
