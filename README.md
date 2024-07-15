@@ -84,18 +84,18 @@ Some examples can be appreciated in the `examples` folder: https://github.com/Le
 In particular, the following DPG is obtained by transforming a Random Forest with 5 base learners, trained on Iris dataset.
 The used command is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples`.
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2.png" width="600" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2.png" width="800" />
 </p>
 
 The following visualizations are obtained using the same parameters as the previous example, but they show two different metrics: _Community_ and _Betweenness Centrality_.
 The used command for showing communities is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples --communities`.
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_communities.png" width="600" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_communities.png" width="800" />
 </p>
 
 The used command for showing a specific property is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples --attribute "Betweenness Centrality" --class_flag`.
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_Betweennesscentrality.png" width="600" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_Betweennesscentrality.png" width="800" />
 </p>
 
 ***
