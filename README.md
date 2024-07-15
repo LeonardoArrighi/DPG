@@ -14,17 +14,17 @@ The concept behind DPG is to convert a generic tree-based ensemble model for cla
 - Edges denote the frequency with which these predicates are satisfied during the model training phase by the samples of the dataset.
 
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true" width="400" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/example.png?raw=true" width="600" />
 </p>
 
 ## Metrics
 The graph-based nature of DPG provides significant enhancements in the direction of a complete mapping of the ensemble structure.
 | Property     | Definition | Utility |
 |--------------|------------|---------|
-| Constraints  | The intervals of values for each feature obtained from all predicates connected by a path that culminates in a given class. | Calculate the classification boundary values of each feature associated with each class. |
-|Betweenness Centrality | Quantifies the fraction of all the shortest paths between every pair of nodes of the graph passing through the considered node. | Identify potential bottleneck nodes that correspond to crucial decisions. |
-| Local Reaching Centrality | Quantifies the proportion of other nodes reachable from the local node through its outgoing edges. | Assess the importance of nodes similarly to feature importance, but enrich the information by encompassing the values associated with features across all decisions. |
-| Community | A subset of nodes of the DPG which is characterised by dense interconnections between its elements and sparse connections with the other nodes of the DPG that do not belong to the community. | Understanding the characteristics of nodes to be assigned to a particular community class, identifying predominant predicates, and those that play a marginal role in the classification process. |
+| _Constraints_  | The intervals of values for each feature obtained from all predicates connected by a path that culminates in a given class. | Calculate the classification boundary values of each feature associated with each class. |
+| _Betweenness Centrality_ | Quantifies the fraction of all the shortest paths between every pair of nodes of the graph passing through the considered node. | Identify potential bottleneck nodes that correspond to crucial decisions. |
+| _Local Reaching Centrality_ | Quantifies the proportion of other nodes reachable from the local node through its outgoing edges. | Assess the importance of nodes similarly to feature importance, but enrich the information by encompassing the values associated with features across all decisions. |
+| _Community_ | A subset of nodes of the DPG which is characterised by dense interconnections between its elements and sparse connections with the other nodes of the DPG that do not belong to the community. | Understanding the characteristics of nodes to be assigned to a particular community class, identifying predominant predicates, and those that play a marginal role in the classification process. |
 
 
 |Constraints | Betweenness Centrality | Local Reaching Centrality | Community|
@@ -82,9 +82,20 @@ The usage of `dpg_custom.py` is similar, but it requires another parameter:
 Some examples can be appreciated in the `examples` folder: https://github.com/LeonardoArrighi/DPG/tree/main/examples
 
 In particular, the following DPG is obtained by transforming a Random Forest with 5 base learners, trained on Iris dataset.
-The used command is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples`
+The used command is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2.png" width="600" />
+</p>
+
+The following visualizations are obtained using the same parameters as the previous example, but they show two different metrics: _Community_ and _Betweenness Centrality_.
+The used command for showing communities is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples --communities`.
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_communities.png" width="600" />
+</p>
+
+The used command for showing a specific property is `python --ds iris --l 5 --pv 0.001 --t 2 -- dir examples --plot --save_plot_dir examples --attribute "Betweenness Centrality" --class_flag`.
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/iris_bl5_perc0.001_dec2_Betweennesscentrality.png" width="600" />
 </p>
 
 ***
