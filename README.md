@@ -104,13 +104,14 @@ If you use this for research, please cite. Here is an example BibTeX entry:
 
 
 ```
-@misc{arrighi2024dpg,
-      title={Decision Predicate Graphs: Enhancing Interpretability in Tree Ensembles}, 
-      author={Leonardo Arrighi and Luca Pennella and Gabriel Marques Tavares and Sylvio Barbon Junior},
-      year={2024},
-      eprint={2404.02942},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2404.02942}, 
+@inproceedings{arrighi2024dpg,
+  title={Decision Predicate Graphs: Enhancing Interpretability in Tree Ensembles},
+  author={Arrighi, Leonardo and Pennella, Luca and Marques Tavares, Gabriel and Barbon Junior, Sylvio},
+  booktitle={World Conference on Explainable Artificial Intelligence},
+  pages={311--332},
+  year={2024},
+  isbn = {978-3-031-63797-1},
+  doi = {10.1007/978-3-031-63797-1_16},
+  publisher = {Springer Nature Switzerland},
 }
 ```
