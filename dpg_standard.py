@@ -27,9 +27,9 @@ if __name__ == "__main__":
                                         file_name = os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_stats.txt'), 
                                         plot = args.plot, 
                                         save_plot_dir = args.save_plot_dir, 
-                                        attribute=args.attribute, 
-                                        communities=args.communities, 
-                                        class_flag=args.class_flag)
+                                        attribute = args.attribute, 
+                                        communities = args.communities, 
+                                        class_flag = args.class_flag)
 
     df.sort_values(['Degree'])
 

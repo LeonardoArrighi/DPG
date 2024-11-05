@@ -1,3 +1,4 @@
+import os
 from graphviz import Source
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -108,7 +109,7 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
         cbar.set_label(attribute)
 
     # Save the plot to the specified directory
-    plt.savefig(save_dir + plot_name + ".png")
+    plt.savefig(os.path.join(save_dir, plot_name + ".png"))
     plt.show()
 
     # Clean up temporary files
