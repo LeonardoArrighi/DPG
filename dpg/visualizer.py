@@ -109,6 +109,7 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
         cbar.set_label(attribute)
 
     # Save the plot to the specified directory
+    os.makedirs(save_dir, exist_ok=True)
     plt.savefig(os.path.join(save_dir, plot_name + ".png"))
     plt.show()
 
