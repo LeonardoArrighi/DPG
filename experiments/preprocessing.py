@@ -227,9 +227,9 @@ if __name__ == "__main__":
     elif args.function == "dpg":
         run = _init_neptune()
 
-        dataset_name = "datasets/group1_bi.csv"
+        dataset_name = "group1_bi.csv"
         clf = RandomForestClassifier(n_estimators=5, random_state=42)
-        dataset_raw = pd.read_csv(dataset_name)
+        dataset_raw = pd.read_csv(f"datasets/{dataset_name}")
         dataset_raw = dataset_raw.sample(frac=0.01, random_state=42)
 
         class Dataset:
