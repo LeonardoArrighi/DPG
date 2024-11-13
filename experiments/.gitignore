@@ -1,5 +1,4 @@
 .neptune
 .env
 models/
-datasets/
 plots/
