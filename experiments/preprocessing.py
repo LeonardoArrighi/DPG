@@ -228,9 +228,10 @@ if __name__ == "__main__":
         run = _init_neptune()
 
         dataset_name = "datasets/group1_bi.csv"
-        clf = RandomForestClassifier(n_estimators=100, random_state=42)
+        clf = RandomForestClassifier(n_estimators=5, random_state=42)
         dataset_raw = pd.read_csv(dataset_name)
-        
+        dataset_raw = dataset_raw.sample(frac=0.01, random_state=42)
+
         class Dataset:
             def __init__(self, data, target, feature_names):
                 self.data = data
@@ -243,7 +244,7 @@ if __name__ == "__main__":
             feature_names=dataset_raw.columns[:-1].tolist()  
         )
         run['dataset'] = dataset_name
-
+ 
         # Measure and log the training time
         start_time = time.time()
         X_train, X_test, y_train, y_test = train_test_split(dt.data, dt.target, train_size=0.01, random_state=42, shuffle=True)
