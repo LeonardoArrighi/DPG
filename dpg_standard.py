@@ -10,6 +10,7 @@ if __name__ == "__main__":
     parser.add_argument("--l", type=int, default=5, help="Number of learners for the Random Forest")
     parser.add_argument("--pv", type=float, default=0.001, help="Threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees.")
     parser.add_argument("--t", type=int, default=2, help="Decimal precision of each feature")
+    parser.add_argument("--model_name", type=str, default="RandomForestClassifier", help="Chosen tree-based ensemble model")
     parser.add_argument("--dir", type=str, default="examples/", help="Directory to save results")
     parser.add_argument("--plot", action='store_true', help="Plot the DPG, add the argument to use it as True")
     parser.add_argument("--save_plot_dir", type=str, default="examples/", help="Directory to save the plot image")
@@ -24,6 +25,7 @@ if __name__ == "__main__":
                                         n_learners = args.l, 
                                         perc_var = args.pv, 
                                         decimal_threshold = args.t, 
+                                        model_name = args.model_name,
                                         file_name = os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_stats.txt'), 
                                         plot = args.plot, 
                                         save_plot_dir = args.save_plot_dir, 
