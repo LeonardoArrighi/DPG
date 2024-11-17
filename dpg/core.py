@@ -2,13 +2,14 @@ import pandas as pd
 pd.set_option("display.max_colwidth", 255)
 import re
 import math
-
+import os
 import numpy as np
 
 import graphviz
 import networkx as nx
 
 import hashlib
+from joblib import Parallel, delayed
 
 from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier, AdaBoostRegressor, RandomForestRegressor
 
@@ -228,9 +229,7 @@ def tracing_ensemble(case_id, sample, ensemble_classifier, feature_names, decima
     # Return the event log containing the decision paths
     return event_log
 
-
-
-def filter_log(log, perc_var):
+def filter_log(log, perc_var, n_jobs=-1):
     """
     Filters a log based on the variant percentage. Variants (unique sequences of activities for cases) 
     that occur less than the specified threshold are removed from the log.
@@ -238,76 +237,149 @@ def filter_log(log, perc_var):
     Args:
     log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
     perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
+    n_jobs: Number of parallel jobs to use. Default is -1 (use all available CPUs).
 
     Returns:
     log: A filtered pandas DataFrame containing only the cases and activities that meet the variant percentage threshold.
     """
 
-    # Initialize a dictionary to store variants and their corresponding cases
-    variants = {}
+    # Helper function to process a chunk of cases
+    def process_chunk(chunk):
+        chunk_variants = {}
+        for case in chunk:
+            key = "|".join([x for x in log[log["case:concept:name"] == case]["concept:name"]])
+            if key in chunk_variants:
+                chunk_variants[key].append(case)
+            else:
+                chunk_variants[key] = [case]
+        return chunk_variants
 
-    # Identify and count the unique variants in the log
-    for case in log["case:concept:name"].unique():
-        key = "|".join([x for x in log[log["case:concept:name"] == case]["concept:name"]])
-        if key in variants:
-            variants[key].append(case)
-        else:
-            variants[key] = [case]
+    # Split the cases into chunks for parallel processing
+    cases = log["case:concept:name"].unique()
+    
+    # If n_jobs is -1, use all available CPUs, otherwise use the provided n_jobs
+    if n_jobs == -1:
+        n_jobs = os.cpu_count()  # Get the number of available CPU cores
+    
+    # Adjust n_jobs if there are fewer cases than n_jobs
+    n_jobs = min(n_jobs, len(cases))  # Ensure n_jobs is not larger than the number of cases
+    
+    # Calculate chunk size
+    chunk_size = len(cases) // n_jobs if len(cases) // n_jobs > 0 else 1  # Ensure chunk_size is at least 1
+    
+    # Split the cases into chunks
+    chunks = [cases[i:i + chunk_size] for i in range(0, len(cases), chunk_size)]
+    
+    # Process each chunk in parallel
+    results = Parallel(n_jobs=n_jobs)(delayed(process_chunk)(chunk) for chunk in chunks)
+
+    # Combine results into a single dictionary
+    variants = {}
+    for result in results:
+        for key, value in result.items():
+            if key in variants:
+                variants[key].extend(value)
+            else:
+                variants[key] = value
 
     # Get the total number of unique traces in the log
     total_traces = log["case:concept:name"].nunique()
 
-    # Initialize lists to store cases and activities that meet the threshold
-    cases, activities = [], []
+    # Helper function to filter variants in parallel
+    def filter_variants(chunk):
+        local_cases, local_activities = [], []
+        for k, v in chunk.items():
+            if len(v) / total_traces >= perc_var:
+                for case in v:
+                    for act in k.split("|"):
+                        local_cases.append(case)
+                        local_activities.append(act)
+        return local_cases, local_activities
 
-    # Filter variants based on the percentage threshold
-    for k, v in variants.items():
-        if len(v) / total_traces >= perc_var:
-            # Add cases and their activities to the lists if they meet the threshold
-            for case in v:
-                for act in k.split("|"):
-                    cases.append(case)
-                    activities.append(act)
+    # Split the dictionary of variants into chunks for filtering
+    variant_items = list(variants.items())
+    
+    # Split variant_items into chunks
+    chunk_size = len(variant_items) // n_jobs if len(variant_items) // n_jobs > 0 else 1  # Ensure chunk_size is at least 1
+    chunks = [variant_items[i:i + chunk_size] for i in range(0, len(variant_items), chunk_size)]
+    
+    # Process filtering in parallel
+    results = Parallel(n_jobs=n_jobs)(delayed(filter_variants)(dict(chunk)) for chunk in chunks)
+
+    # Combine results into lists of cases and activities
+    cases, activities = [], []
+    for local_cases, local_activities in results:
+        cases.extend(local_cases)
+        activities.extend(local_activities)
+
+    # Ensure both lists are of the same length before creating DataFrame
+    assert len(cases) == len(activities), f"Length mismatch: {len(cases)} cases vs {len(activities)} activities"
 
     # Create a new DataFrame from the filtered cases and activities
-    log = pd.DataFrame(zip(cases, activities), columns=["case:concept:name", "concept:name"])
+    filtered_log = pd.DataFrame(zip(cases, activities), columns=["case:concept:name", "concept:name"])
 
-    return log
+    return filtered_log
 
-
-
-def discover_dfg(log):
+def discover_dfg(log, n_jobs=-1):
     """
     Mines the nodes and edges relationships from an event log and returns a dictionary representing
     the Data Flow Graph (DFG). The DFG shows the frequency of transitions between activities.
 
     Args:
     log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
+    n_jobs: Number of parallel jobs to use. Default is -1 (use all available CPUs).
 
     Returns:
     dfg: A dictionary where keys are tuples representing transitions between activities and values are the counts of those transitions.
     """
-    # Initialize an empty dictionary to store the Data Flow Graph (DFG)
-    dfg = {}
+
+    # Helper function to process a chunk of cases
+    def process_chunk(chunk):
+        chunk_dfg = {}
+        for case in chunk:
+            # Extract the trace (sequence of activities) for the current case
+            trace_df = log[log["case:concept:name"] == case].copy()
+            trace_df.sort_values(by="case:concept:name", inplace=True)
+
+            # Iterate through the trace to capture transitions between consecutive activities
+            for i in range(len(trace_df) - 1):
+                key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])  # Transition
+                if key in chunk_dfg:
+                    chunk_dfg[key] += 1  # Increment count if transition exists
+                else:
+                    chunk_dfg[key] = 1  # Initialize count if transition is new
+        return chunk_dfg
+
+    # Get all unique case names
+    cases = log["case:concept:name"].unique()
+
+    # If n_jobs is -1, use all available CPUs, otherwise use the provided n_jobs
+    if n_jobs == -1:
+        n_jobs = os.cpu_count()  # Get the number of available CPU cores
     
-    # Iterate over each unique case in the log
-    for case in log["case:concept:name"].unique():
-        # Extract the trace (sequence of activities) for the current case
-        trace_df = log[log["case:concept:name"] == case].copy()
-        trace_df.sort_values(by="case:concept:name", inplace=True)
-        
-        # Iterate through the trace to capture transitions between consecutive activities
-        for i in range(len(trace_df) - 1):
-            key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])  # Create a key for the transition
+    # Ensure n_jobs is at least 1 and no larger than the number of cases
+    n_jobs = max(min(n_jobs, len(cases)), 1)  # Ensure n_jobs is within valid range
+
+    # Calculate chunk size, ensure chunk size is at least 1
+    chunk_size = max(len(cases) // n_jobs, 1)  # Ensure chunk_size is at least 1
+    
+    # Split the cases into chunks
+    chunks = [cases[i:i + chunk_size] for i in range(0, len(cases), chunk_size)]
+
+    # Process each chunk in parallel
+    results = Parallel(n_jobs=n_jobs)(delayed(process_chunk)(chunk) for chunk in chunks)
+
+    # Merge all chunk DFGs into a single DFG dictionary
+    dfg = {}
+    for result in results:
+        for key, value in result.items():
             if key in dfg:
-                dfg[key] += 1  # Increment the count if the transition already exists in the DFG
+                dfg[key] += value  # Aggregate counts for shared transitions
             else:
-                dfg[key] = 1  # Initialize the count if the transition is new
+                dfg[key] = value
 
-    # Return the DFG dictionary
+    # Return the final DFG dictionary
     return dfg
-
-
 
 def generate_dot(dfg, log):
     """
@@ -528,7 +600,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
 
 
 
-def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_classes):
+def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_classes, n_jobs=-1):
     """
     Generates a DPG from training data and a random forest model.
 
@@ -538,33 +610,35 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_clas
     model: A trained random forest model.
     perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
     decimal_threshold: The number of decimal places to which thresholds are rounded.
+    n_jobs: Number of parallel jobs to run. Default is -1 (use all available CPUs).
 
     Returns:
     dot: A Graphviz Digraph object representing the DPG.
     """
 
-    # Initialize an empty log to store the traces
-    log = []
+    def process_sample(i, sample):
+        """Process a single sample."""
+        return tracing_ensemble(i, sample, model, feature_names, decimal_threshold, num_classes)
 
-    # Trace the paths for each sample in the training data using the random forest model
-    for i, sample in enumerate(X_train):
-        log.extend(tracing_ensemble(i, sample, model, feature_names, decimal_threshold, num_classes))
+    log = Parallel(n_jobs=n_jobs)(
+        delayed(process_sample)(i, sample) for i, sample in enumerate(X_train)
+    )
 
-    # Create a DataFrame from the log
+    # Flatten the list of lists
+    log = [item for sublist in log for item in sublist]
     log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
+    
     
     # Filter the log based on the variant percentage if specified
     filtered_log = log_df
     if perc_var > 0:
         filtered_log = filter_log(log_df, perc_var)
-
+    
     # Discover the Data Flow Graph (DFG) from the filtered log
     dfg = discover_dfg(filtered_log)
 
     # Create a Graphviz Digraph object from the DFG
     dot = generate_dot(dfg, filtered_log)
-
-    # Return the Graphviz Digraph object representing the DPG
     return dot
 
 def sigmoid(x):
