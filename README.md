@@ -58,12 +58,13 @@ The DPG application, through `dpg_standard.py` or `dpg_custom.py`, produces seve
 - a `.txt` file containing the Random Forest statistics (accuracy, confusion matrix, classification report)
 
 ## Easy usage
-Usage: `python dpg_standard.py --ds <dataset_name> --l <integer_number> --pv <threshold_value> --t <integer_number> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
+Usage: `python dpg_standard.py --ds <dataset_name> --l <integer_number> --pv <threshold_value> --t <integer_number> --model_name <str_model_name> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
 Where:
 - `ds` is the name of the standard classification `sklearn` dataset to be analyzed;
 - `l` is the number of base learners for the Random Forest;
 - `pv` is the threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees;
 - `t` is the decimal precision of each feature;
+- `model_name` is the name of the `sklearn` model chosen to perform classification (`RandomForestClassifier`,`BaggingClassifier`,`ExtraTreesClassifier`,`AdaBoostClassifier` are currently available);
 - `dir` is the path of the directory to save the files;
 - `plot` is a store_true variable which can be added to plot the DPG;
 - `save_plot_dir` is the path of the directory to save the plot image;
