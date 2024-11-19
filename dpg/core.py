@@ -86,7 +86,7 @@ def digraph_to_nx(graphviz_graph):
 
 
 
-def tracing_ensemble(case_id, sample, ensemble_classifier, feature_names, decimal_threshold=1, num_classes=1):
+def tracing_ensemble(case_id, sample, ensemble, feature_names, decimal_threshold=1):
     '''
     This function traces the decision paths taken by each decision tree in a random forest classifier for a given sample.
     It records the path of decisions made by each tree, including the comparisons at each node and the resulting class.
@@ -144,86 +144,27 @@ def tracing_ensemble(case_id, sample, ensemble_classifier, feature_names, decima
                 path.append(f"{feature_name} > {round(float(tree_.threshold[node_index]), decimal_threshold)}")
                 build_path_reg(tree, tree_.children_right[node_index], path)                
 
-    def build_path_xgb(tree_dump, node_id=0, path=[], sample=None, feature_names=None, decimal_threshold=1, is_multiclass=False, num_classes=None):
-        lines = tree_dump.split('\n')
-        class_scores = np.zeros(num_classes) if is_multiclass else None
-        for line in lines:
-            if ':' in line:  # Node line
-                node_idx, info = line.split(':')
-                if node_idx.strip() == str(node_id):
-                    if 'leaf' in info:
-                        #print('IS MULTICLASS:', is_multiclass)
-                        score = float(info.split('=')[1].strip())
-                        if is_multiclass:
-                            class_scores += score  # TODO:implement for multiclass
-                        else:
-                            # Binary classification: Convert score to probability
-                            probability = sigmoid(score)
-                            class_label = 1 if probability > 0.5 else 0
-                            path.append(f"Class {class_label} (Probability: {probability:.4f})")
-                            return path
-                    else:
-                        feature, threshold = info.split('<')
-                        feature_name = feature_names[int(feature.split('[')[1].strip().replace('f',''))]
-                        feature_index = feature_names.index(feature_name)
-                        threshold_val = float(threshold.split(']')[0].strip())
-                        sample_val = sample[feature_index]
-
-                        if sample_val <= threshold_val:
-                            path.append(f"{feature_name} <= {round(threshold_val, decimal_threshold)}")
-                            next_node_id = int(info.split('yes=')[1].split(',')[0])
-                            build_path_xgb(tree_dump, next_node_id, path, sample, feature_names, decimal_threshold, is_multiclass, num_classes)
-                        else:
-                            path.append(f"{feature_name} > {round(threshold_val, decimal_threshold)}")
-                            next_node_id = int(info.split('no=')[1].split(',')[0])
-                            build_path_xgb(tree_dump, next_node_id, path, sample, feature_names, decimal_threshold, is_multiclass, num_classes)
-        if is_multiclass:
-            #print("Multiclass!!!")
-            probabilities = softmax(class_scores)
-            predicted_class = np.argmax(probabilities)
-            #print('Predicted Class:', predicted_class)
-            path.append(f"Predicted Class: {predicted_class} (Probabilities: {probabilities})")
-            return path
-        return path
-
-
-    if isinstance(ensemble_classifier, RandomForestClassifier) or isinstance(ensemble_classifier, ExtraTreesClassifier) or isinstance(ensemble_classifier, AdaBoostClassifier) or isinstance(ensemble_classifier, BaggingClassifier):
-        for i, tree_in_forest in enumerate(ensemble_classifier.estimators_):
+    if isinstance(ensemble, RandomForestClassifier) or isinstance(ensemble, ExtraTreesClassifier) or isinstance(ensemble, AdaBoostClassifier) or isinstance(ensemble, BaggingClassifier):
+        for i, tree_in_forest in enumerate(ensemble.estimators_):
             sample_path = []  
             build_path(tree_in_forest, 0, sample_path)
-
             for step in sample_path:
                 event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])
-    elif isinstance(ensemble_classifier, GradientBoostingClassifier):                
-        for i, stage in enumerate(ensemble_classifier.estimators_):
+    elif isinstance(ensemble, GradientBoostingClassifier):                
+        for i, stage in enumerate(ensemble.estimators_):
             for j, tree_in_stage in enumerate(stage):
                 sample_path = []  # Initialize a path list for the current tree
                 build_path(tree_in_stage, 0, sample_path)  # Build the path starting from the root node
                 for step in sample_path:
                     event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])
-    #elif isinstance(ensemble_classifier, XGBClassifier):
-    #    booster = ensemble_classifier.get_booster()
-    #    trees = booster.get_dump(dump_format='text')
-
-    #    for i, tree_dump in enumerate(trees):
-    #        sample_path = []
-    #        if num_classes>=2:
-    #            complete_path = []
-    #            for tree in tree_dump:
-    #                print(tree)
-    #                complete_path.extend(build_path_xgb(tree, sample=sample, feature_names=feature_names, is_multiclass=True, num_classes=num_classes))
-    #        else:
-    #            complete_path = build_path_xgb(tree_dump[0], sample=sample, feature_names=feature_names)
-
-    #        build_path_xgb(tree_dump, 0, sample_path, sample, feature_names, decimal_threshold)
-    #        for step in sample_path:
-    #            event_log.append([f"sample{case_id}_dt{i}", step])
-    elif isinstance(ensemble_classifier, AdaBoostRegressor) or isinstance(ensemble_classifier, RandomForestRegressor):
-        for i, tree_in_forest in enumerate(ensemble_classifier.estimators_):
+    elif isinstance(ensemble, AdaBoostRegressor) or isinstance(ensemble, RandomForestRegressor):
+        for i, tree_in_forest in enumerate(ensemble.estimators_):
             sample_path = []  
             build_path_reg(tree_in_forest, 0, sample_path)
             for step in sample_path:
-                event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])                
+                event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])  
+    else:
+        raise Exception("Ensemble model not recognized!")               
 
     
     # Return the event log containing the decision paths
@@ -600,7 +541,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
 
 
 
-def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_classes, n_jobs=-1):
+def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-1):
     """
     Generates a DPG from training data and a random forest model.
 
@@ -618,7 +559,7 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_clas
 
     def process_sample(i, sample):
         """Process a single sample."""
-        return tracing_ensemble(i, sample, model, feature_names, decimal_threshold, num_classes)
+        return tracing_ensemble(i, sample, model, feature_names, decimal_threshold)
 
     log = Parallel(n_jobs=n_jobs)(
         delayed(process_sample)(i, sample) for i, sample in enumerate(X_train)
@@ -627,7 +568,6 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, num_clas
     # Flatten the list of lists
     log = [item for sublist in log for item in sublist]
     log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
-    
     
     # Filter the log based on the variant percentage if specified
     filtered_log = log_df
