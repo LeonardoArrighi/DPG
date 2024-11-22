@@ -11,7 +11,7 @@ import networkx as nx
 import hashlib
 from joblib import Parallel, delayed
 
-from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier, AdaBoostRegressor, RandomForestRegressor
+from sklearn.ensemble import BaggingClassifier, RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier, AdaBoostRegressor, RandomForestRegressor, ExtraTreesRegressor
 
 def digraph_to_nx(graphviz_graph):
     '''
@@ -85,8 +85,7 @@ def digraph_to_nx(graphviz_graph):
     return networkx_graph, nodes_list
 
 
-
-def tracing_ensemble(case_id, sample, ensemble, feature_names, decimal_threshold=1):
+def tracing_ensemble(case_id, sample, ensemble, feature_names, decimal_threshold=2):
     '''
     This function traces the decision paths taken by each decision tree in a random forest classifier for a given sample.
     It records the path of decisions made by each tree, including the comparisons at each node and the resulting class.
@@ -100,74 +99,53 @@ def tracing_ensemble(case_id, sample, ensemble, feature_names, decimal_threshold
 
     Returns:
     event_log: A list of the decision steps taken by each tree in the forest for the given sample.
-    '''
-
-    # Initialize an empty event log to store the decision paths
+    '''    
     event_log = []
 
-    # Helper function to build the decision path for a single tree
-    def build_path(tree, node_index, path=[]):
-        tree_ = tree.tree_
-        # Check if the node is a leaf node
-        if tree_.children_left[node_index] == tree_.children_right[node_index]:
-            path.append(f"Class {tree_.value[node_index].argmax()}")
+    def build_path(tree, node_index, path):
+        node = tree.tree_
+        is_leaf = node.children_left[node_index] == node.children_right[node_index]
+        feature_index = node.feature[node_index]
+        feature_name = feature_names[feature_index]
+        threshold = round(node.threshold[node_index], decimal_threshold)
+        sample_val = sample[feature_index]
+
+        if is_leaf:
+            path.append(f"Class {node.value[node_index].argmax()}")
         else:
-            # Get the feature name and threshold for the current node
-            feature_name = feature_names[tree_.feature[node_index]]
-            threshold = round(float(tree_.threshold[node_index]), decimal_threshold)
-            sample_val = sample[tree_.feature[node_index]]
+            condition = f"{feature_name} <= {threshold}" if sample_val <= threshold else f"{feature_name} > {threshold}"
+            path.append(condition)
+            next_node = node.children_left[node_index] if sample_val <= threshold else node.children_right[node_index]
+            build_path(tree, next_node, path)
 
-            # Decide whether to go to the left or right child node based on the sample value
-            if sample_val <= threshold:
-                path.append(f"{feature_name} <= {round(float(tree_.threshold[node_index]), decimal_threshold)}")
-                build_path(tree, tree_.children_left[node_index], path)
-            else:
-                path.append(f"{feature_name} > {round(float(tree_.threshold[node_index]), decimal_threshold)}")
-                build_path(tree, tree_.children_right[node_index], path)
-
-    def build_path_reg(tree, node_index, path=[]):
-        tree_ = tree.tree_
-        # Check if the node is a leaf node
-        if tree_.children_left[node_index] == tree_.children_right[node_index]:
-            path.append(f"Pred {np.round(tree_.value[node_index][0],2)}")
+    def build_path_reg(tree, node_index, path):
+        node = tree.tree_
+        if node.children_left[node_index] == node.children_right[node_index]:
+            path.append(f"Pred {np.round(node.value[node_index][0], 2)}")
         else:
-            # Get the feature name and threshold for the current node
-            feature_name = feature_names[tree_.feature[node_index]]
-            threshold = round(float(tree_.threshold[node_index]), decimal_threshold)
-            sample_val = sample[tree_.feature[node_index]]
+            feature_index = node.feature[node_index]
+            feature_name = feature_names[feature_index]
+            threshold = round(node.threshold[node_index], decimal_threshold)
+            sample_val = sample[feature_index]
+            condition = f"{feature_name} <= {threshold}" if sample_val <= threshold else f"{feature_name} > {threshold}"
+            path.append(condition)
+            next_node = node.children_left[node_index] if sample_val <= threshold else node.children_right[node_index]
+            build_path_reg(tree, next_node, path)
 
-            # Decide whether to go to the left or right child node based on the sample value
-            if sample_val <= threshold:
-                path.append(f"{feature_name} <= {round(float(tree_.threshold[node_index]), decimal_threshold)}")
-                build_path_reg(tree, tree_.children_left[node_index], path)
-            else:
-                path.append(f"{feature_name} > {round(float(tree_.threshold[node_index]), decimal_threshold)}")
-                build_path_reg(tree, tree_.children_right[node_index], path)                
+    tree_types = (RandomForestClassifier, ExtraTreesClassifier, AdaBoostClassifier, BaggingClassifier,
+                  AdaBoostRegressor, RandomForestRegressor, ExtraTreesRegressor)
+    if not isinstance(ensemble, tree_types):
+        raise Exception("Ensemble model not recognized!")
 
-    if isinstance(ensemble, RandomForestClassifier) or isinstance(ensemble, ExtraTreesClassifier) or isinstance(ensemble, AdaBoostClassifier) or isinstance(ensemble, BaggingClassifier):
-        for i, tree_in_forest in enumerate(ensemble.estimators_):
-            sample_path = []  
-            build_path(tree_in_forest, 0, sample_path)
-            for step in sample_path:
-                event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])
-    elif isinstance(ensemble, GradientBoostingClassifier):                
-        for i, stage in enumerate(ensemble.estimators_):
-            for j, tree_in_stage in enumerate(stage):
-                sample_path = []  # Initialize a path list for the current tree
-                build_path(tree_in_stage, 0, sample_path)  # Build the path starting from the root node
-                for step in sample_path:
-                    event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])
-    elif isinstance(ensemble, AdaBoostRegressor) or isinstance(ensemble, RandomForestRegressor):
-        for i, tree_in_forest in enumerate(ensemble.estimators_):
-            sample_path = []  
-            build_path_reg(tree_in_forest, 0, sample_path)
-            for step in sample_path:
-                event_log.append(["sample" + str(case_id) + "_dt" + str(i), step])  
-    else:
-        raise Exception("Ensemble model not recognized!")               
+    for i, tree in enumerate(ensemble.estimators_):
+        sample_path = []
+        if isinstance(ensemble, (AdaBoostRegressor, RandomForestRegressor, ExtraTreesRegressor)):
+            build_path_reg(tree, 0, sample_path)
+        else:
+            build_path(tree, 0, sample_path)
+        tree_events = [[f"sample{case_id}_dt{i}", step] for step in sample_path]
+        event_log.extend(tree_events)
 
-    
-    # Return the event log containing the decision paths
     return event_log
 
 def filter_log(log, perc_var, n_jobs=-1):
@@ -184,15 +162,18 @@ def filter_log(log, perc_var, n_jobs=-1):
     log: A filtered pandas DataFrame containing only the cases and activities that meet the variant percentage threshold.
     """
 
-    # Helper function to process a chunk of cases
     def process_chunk(chunk):
+        # Filter the log DataFrame to only include cases from the current chunk
+        filtered_log = log[log['case:concept:name'].isin(chunk)]
+        grouped = filtered_log.groupby('case:concept:name')['concept:name'].agg('|'.join)
+        # Invert the series to a dictionary where keys are the concatenated 'concept:name' and values are lists of cases
         chunk_variants = {}
-        for case in chunk:
-            key = "|".join([x for x in log[log["case:concept:name"] == case]["concept:name"]])
+        for case, key in grouped.items():
             if key in chunk_variants:
                 chunk_variants[key].append(case)
             else:
                 chunk_variants[key] = [case]
+        
         return chunk_variants
 
     # Split the cases into chunks for parallel processing
@@ -261,7 +242,7 @@ def filter_log(log, perc_var, n_jobs=-1):
 
     return filtered_log
 
-def discover_dfg(log, n_jobs=-1):
+def discover_dfg(log, n_jobs=1):
     """
     Mines the nodes and edges relationships from an event log and returns a dictionary representing
     the Data Flow Graph (DFG). The DFG shows the frequency of transitions between activities.
@@ -276,23 +257,28 @@ def discover_dfg(log, n_jobs=-1):
 
     # Helper function to process a chunk of cases
     def process_chunk(chunk):
-        chunk_dfg = {}
-        for case in chunk:
-            # Extract the trace (sequence of activities) for the current case
-            trace_df = log[log["case:concept:name"] == case].copy()
-            trace_df.sort_values(by="case:concept:name", inplace=True)
+            chunk_dfg = {}
+            for case in chunk:
+                # Extract the trace (sequence of activities) for the current case
+                trace_df = log[log["case:concept:name"] == case].copy()
+                trace_df.sort_values(by="case:concept:name", inplace=True)
 
-            # Iterate through the trace to capture transitions between consecutive activities
-            for i in range(len(trace_df) - 1):
-                key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])  # Transition
-                if key in chunk_dfg:
-                    chunk_dfg[key] += 1  # Increment count if transition exists
-                else:
-                    chunk_dfg[key] = 1  # Initialize count if transition is new
-        return chunk_dfg
+                # Iterate through the trace to capture transitions between consecutive activities
+                for i in range(len(trace_df) - 1):
+                    key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])  # Transition
+                    if key in chunk_dfg:
+                        chunk_dfg[key] += 1  # Increment count if transition exists
+                    else:
+                        chunk_dfg[key] = 1  # Initialize count if transition is new
+            return chunk_dfg
+
+     
 
     # Get all unique case names
     cases = log["case:concept:name"].unique()
+    print("Remaining paths:", len(cases))
+    if len(cases) == 0:
+       raise Exception("There is no paths with the current value of perc_var and decimal_threshold! Try one less restrictive.") 
 
     # If n_jobs is -1, use all available CPUs, otherwise use the provided n_jobs
     if n_jobs == -1:
@@ -308,9 +294,11 @@ def discover_dfg(log, n_jobs=-1):
     chunks = [cases[i:i + chunk_size] for i in range(0, len(cases), chunk_size)]
 
     # Process each chunk in parallel
+    print("Traversing...")
     results = Parallel(n_jobs=n_jobs)(delayed(process_chunk)(chunk) for chunk in chunks)
 
     # Merge all chunk DFGs into a single DFG dictionary
+    print("Aggregating...")
     dfg = {}
     for result in results:
         for key, value in result.items():
@@ -322,13 +310,12 @@ def discover_dfg(log, n_jobs=-1):
     # Return the final DFG dictionary
     return dfg
 
-def generate_dot(dfg, log):
+def generate_dot(dfg):
     """
     Creates a Graphviz directed graph (digraph) from a Data Flow Graph (DFG) dictionary and returns the dot representation.
 
     Args:
     dfg: A dictionary where keys are tuples representing transitions between activities and values are the counts of those transitions.
-    log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
 
     Returns:
     dot: A Graphviz dot object representing the directed graph.
@@ -392,7 +379,7 @@ def generate_dot(dfg, log):
 
 
 
-def calculate_boundaries(dict):
+def calculate_boundaries_old(dict):
     """
     Calculates the boundaries of every feature for every class based on the provided dictionary of predecessors.
 
@@ -407,7 +394,7 @@ def calculate_boundaries(dict):
 
     # Iterate over each class and its corresponding predecessor nodes
     for key, value in dict.items():
-        if 'Class' in key:
+        if 'Class' or 'Pred' in key:
             boundaries_class[key] = []
             
             # Extract unique feature names from the predecessor nodes
@@ -441,6 +428,94 @@ def calculate_boundaries(dict):
     # Return the dictionary containing class boundaries
     return boundaries_class
 
+def calculate_boundaries_2(class_dict):
+    """
+    Calculates the boundaries of every feature for every class based on the provided dictionary of predecessors.
+
+    Args:
+    class_dict: A dictionary where keys are class labels and values are lists of predecessor node labels.
+
+    Returns:
+    boundaries_class: A dictionary containing the boundaries for each feature of every class.
+    """
+    boundaries_class = {}
+
+    for key, nodes in class_dict.items():
+        if 'Class' in key or 'Pred' in key:
+            # Initialize boundary dictionary for current class
+            feature_bounds = {}
+
+            # Extract conditions from nodes and update boundary values
+            for node in nodes:
+                parts = re.split(' <= | > ', node)
+                feature = parts[0]
+                value = float(parts[1])
+                condition = '>' in node
+
+                if feature not in feature_bounds:
+                    # Initialize with infinities which will be replaced by actual values
+                    feature_bounds[feature] = [math.inf, -math.inf]  # [min '>' value, max '<=' value]
+
+                if condition:  # '>' condition
+                    if value < feature_bounds[feature][0]:
+                        feature_bounds[feature][0] = value
+                else:  # '<=' condition
+                    if value > feature_bounds[feature][1]:
+                        feature_bounds[feature][1] = value
+
+            # Construct boundary descriptions from feature_bounds
+            boundaries = []
+            for feature, (min_greater, max_lessequal) in feature_bounds.items():
+                if min_greater == math.inf:
+                    boundary = f"{feature} <= {max_lessequal}"
+                elif max_lessequal == -math.inf:
+                    boundary = f"{feature} > {min_greater}"
+                else:
+                    boundary = f"{min_greater} < {feature} <= {max_lessequal}"
+                boundaries.append(boundary)
+
+            boundaries_class[key] = boundaries
+
+    return boundaries_class
+
+def calculate_class_boundaries(key, nodes):
+    feature_bounds = {}
+    boundaries = []
+
+    for node in nodes:
+        parts = re.split(' <= | > ', node)
+        feature = parts[0]
+        value = float(parts[1])
+        condition = '>' in node
+
+        if feature not in feature_bounds:
+            feature_bounds[feature] = [math.inf, -math.inf]
+
+        if condition:  # '>' condition
+            if value < feature_bounds[feature][0]:
+                feature_bounds[feature][0] = value
+        else:  # '<=' condition
+            if value > feature_bounds[feature][1]:
+                feature_bounds[feature][1] = value
+
+    for feature, (min_greater, max_lessequal) in feature_bounds.items():
+        if min_greater == math.inf:
+            boundary = f"{feature} <= {max_lessequal}"
+        elif max_lessequal == -math.inf:
+            boundary = f"{feature} > {min_greater}"
+        else:
+            boundary = f"{min_greater} < {feature} <= {max_lessequal}"
+        boundaries.append(boundary)
+
+    return key, boundaries
+
+def calculate_boundaries(class_dict):
+    # Using joblib's Parallel and delayed
+    results = Parallel(n_jobs=-1)(delayed(calculate_class_boundaries)(key, nodes) for key, nodes in class_dict.items())
+    boundaries_class = dict(results)
+    return boundaries_class
+
+
 
 
 def get_dpg_metrics(dpg_model, nodes_list):
@@ -457,6 +532,7 @@ def get_dpg_metrics(dpg_model, nodes_list):
     # Set the random seed for reproducibility
     np.random.seed(42)
 
+    print("Calculating metrics...")
     # Create a dictionary to map node labels to their identifiers
     diz_nodes = {node[1] if "->" not in node[0] else None: node[0] for node in nodes_list}
     # Remove any None keys from the dictionary
@@ -466,23 +542,23 @@ def get_dpg_metrics(dpg_model, nodes_list):
     
     # Extract asynchronous label propagation communities
     asyn_lpa_communities = nx.community.asyn_lpa_communities(dpg_model, weight='weight')
-    asyn_lpa_communities_stack = []
-    for sets in asyn_lpa_communities:
-        new_sets = set()
-        for node in sets:
-            new_sets.add(diz_nodes_reversed[str(node)])  # Map node identifiers back to labels
-        asyn_lpa_communities_stack.append(new_sets)
-        
-    # Initialize a dictionary to store predecessors for each class node
-    predecessors = {}
-    for key_1, value_1 in diz_nodes.items():
-        if 'Class' in key_1:
-            predecessors[key_1] = []
-            for key_2, value_2 in diz_nodes.items():
-                if key_1 != key_2 and nx.has_path(dpg_model, value_2, value_1):
-                    predecessors[key_1].append(key_2)
+    asyn_lpa_communities_stack = [{diz_nodes_reversed[str(node)] for node in community} for community in asyn_lpa_communities]
+
+    filtered_nodes = {k: v for k, v in diz_nodes.items() if 'Class' in k or 'Pred' in k}
+    # Initialize the predecessors dictionary
+    predecessors = {k: [] for k in filtered_nodes}
+    # Find predecessors using more efficient NetworkX capabilities
+    for key_1, value_1 in filtered_nodes.items():
+        # Using single-source shortest path to find all nodes with paths to value_1
+        # This function returns a dictionary of shortest paths to value_1
+        try:
+            preds = nx.single_source_shortest_path(dpg_model.reverse(), value_1)
+            predecessors[key_1] = [k for k, v in diz_nodes.items() if v in preds and k != key_1]
+        except nx.NetworkXNoPath:
+            continue    
 
     # Calculate the class boundaries
+    print("Calculating constraints...")
     class_bounds = calculate_boundaries(predecessors)
 
     # Create a data dictionary to store the extracted metrics
@@ -529,12 +605,10 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
     }
 
     # Merge the node metrics with the node labels
-    df = pd.merge(
-        pd.DataFrame(data_node),
-        pd.DataFrame(nodes_list, columns=["Node", "Label"]),
-        on="Node",
-        how="left",
-    )
+    # Assuming data_node and nodes_list are your input data sets
+    df_data_node = pd.DataFrame(data_node).set_index('Node')
+    df_nodes_list = pd.DataFrame(nodes_list, columns=["Node", "Label"]).set_index('Node')
+    df = pd.concat([df_data_node, df_nodes_list], axis=1, join='inner').reset_index()
     
     # Return the resulting DataFrame
     return df
@@ -549,7 +623,10 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-
     X_train: A numpy array or similar structure containing the training data samples.
     feature_names: A list of feature names corresponding to the columns in X_train.
     model: A trained random forest model.
-    perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
+    perc_var: A float representing the minimum percentage of total traces a variant must have to be kept. 
+    In practical terms, consider a problem with 1,000 paths (learner x training samples), if the minimum percentage threshold is set at 5% (0.05), 
+    only those variants that appear in at least 50 of these paths (5% of 1,000) would be retained for further analysis. 
+    This helps in reducing the noise and complexity of the data, allowing analysts to concentrate on more common and potentially significant patterns.
     decimal_threshold: The number of decimal places to which thresholds are rounded.
     n_jobs: Number of parallel jobs to run. Default is -1 (use all available CPUs).
 
@@ -557,10 +634,18 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-
     dot: A Graphviz Digraph object representing the DPG.
     """
 
+    print("\nStarting DPG extraction *****************************************")
+    print("Model Class:", model.__class__.__name__)
+    print("Model Class Module:", model.__class__.__module__)
+    print("Model Estimators: ", len(model.estimators_))
+    print("Model Params: ", model.get_params())
+    print("*****************************************************************")
+
     def process_sample(i, sample):
         """Process a single sample."""
         return tracing_ensemble(i, sample, model, feature_names, decimal_threshold)
 
+    print('Tracing ensemble...')
     log = Parallel(n_jobs=n_jobs)(
         delayed(process_sample)(i, sample) for i, sample in enumerate(X_train)
     )
@@ -568,34 +653,19 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-
     # Flatten the list of lists
     log = [item for sublist in log for item in sublist]
     log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
+    print(f'Total of paths: {len(log_df["case:concept:name"].unique())}')
     
+    print(f'Filtering structure... (perc_var={perc_var})')
     # Filter the log based on the variant percentage if specified
     filtered_log = log_df
     if perc_var > 0:
         filtered_log = filter_log(log_df, perc_var)
     
+    print('Building DPG...')
     # Discover the Data Flow Graph (DFG) from the filtered log
     dfg = discover_dfg(filtered_log)
 
+    print('Extracting graph...')
     # Create a Graphviz Digraph object from the DFG
-    dot = generate_dot(dfg, filtered_log)
+    dot = generate_dot(dfg)
     return dot
-
-def sigmoid(x):
-    """Compute the sigmoid function."""
-    return 1 / (1 + np.exp(-x))
-
-def softmax(x):
-    # Compute softmax values for each set of scores in x.
-    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-    return e_x / e_x.sum(axis=1, keepdims=True)
-
-def predict_classes(model, data, num_classes):
-    # Convert input data to DMatrix format
-    dmatrix = xgb.DMatrix(data)
-    # Get raw scores
-    raw_scores = model.get_booster().predict(dmatrix, output_margin=True).reshape(-1, num_classes)
-    # Apply softmax
-    probabilities = softmax(raw_scores)
-    # Get class with the highest probability
-    return np.argmax(probabilities, axis=1), probabilities
