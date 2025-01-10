@@ -518,7 +518,7 @@ def calculate_boundaries(class_dict):
 
 
 
-def get_dpg_metrics(dpg_model, nodes_list):
+def get_dpg_metrics(dpg_model, nodes_list, preprocessor=None):
     """
     Extracts metrics from a DPG.
 
@@ -559,13 +559,17 @@ def get_dpg_metrics(dpg_model, nodes_list):
 
     # Calculate the class boundaries
     print("Calculating constraints...")
-    class_bounds = calculate_boundaries(predecessors)
+    if preprocessor is None:
+        class_bounds = calculate_boundaries(predecessors)
+    else:
+        class_bounds = "Dataset with categorical features"
 
     # Create a data dictionary to store the extracted metrics
     data = {
         "Communities": asyn_lpa_communities_stack,
         "Class Bounds": class_bounds,
     }
+
 
     return data
 
@@ -615,7 +619,7 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
 
 
 
-def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-1):
+def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, preprocessor=None, n_jobs=-1):
     """
     Generates a DPG from training data and a random forest model.
 
@@ -628,6 +632,7 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-
     only those variants that appear in at least 50 of these paths (5% of 1,000) would be retained for further analysis. 
     This helps in reducing the noise and complexity of the data, allowing analysts to concentrate on more common and potentially significant patterns.
     decimal_threshold: The number of decimal places to which thresholds are rounded.
+    preprocessog: A preprocessor object used to transform the data before training the model, dealing with categorical features, etc.
     n_jobs: Number of parallel jobs to run. Default is -1 (use all available CPUs).
 
     Returns:
@@ -660,7 +665,11 @@ def get_dpg(X_train, feature_names, model, perc_var, decimal_threshold, n_jobs=-
     filtered_log = log_df
     if perc_var > 0:
         filtered_log = filter_log(log_df, perc_var)
-    
+
+    if preprocessor is not None:
+        filtered_log["concept:name_2"] = preprocessor.inverse_transform(filtered_log["concept:name"])
+        filtered_log.to_csv('filtered_log.csv', index=False)
+
     print('Building DPG...')
     # Discover the Data Flow Graph (DFG) from the filtered log
     dfg = discover_dfg(filtered_log)

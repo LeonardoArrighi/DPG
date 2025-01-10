@@ -10,6 +10,7 @@ from sklearn.base import is_classifier, is_regressor
 
 from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
 from .visualizer import plot_dpg
+from .categorical_ensemble import DataPreprocessor
 
 
 def select_custom_dataset(path, target_column):
@@ -34,7 +35,15 @@ def select_custom_dataset(path, target_column):
     # Remove the target column from the dataframe
     df.drop(columns=[target_column], inplace=True)
     
-    # Convert the feature data to a numpy array
+    preprocessor = None
+    if has_non_numerical_features(df):
+        # Transform the data
+        preprocessor = DataPreprocessor(target_column)
+        transformed_df = preprocessor.fit_transform(df)
+        #transformed_df.to_csv('adult_mini_transformed.csv', index=False)
+        df = transformed_df
+    
+        # Convert the feature data to a numpy array
     data = []
     for index, row in df.iterrows():
         data.append([row[j] for j in df.columns])
@@ -44,11 +53,11 @@ def select_custom_dataset(path, target_column):
     features = np.array([i for i in df.columns])
 
     # Return the feature data, feature names, and target variable
-    return data, features, target
+    return data, features, target, preprocessor
 
 
 
-def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_threshold, model_name='RandomForestClassifier', file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False):
+def test_base_custom(datasets, target_column, n_learners, perc_var, decimal_threshold, model_name='RandomForestClassifier', file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False):
     """
     Trains a Random Forest classifier on a selected dataset, evaluates its performance, and optionally plots the DPG.
 
@@ -72,7 +81,7 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
     """
     
     # Load dataset
-    data, features, target = select_custom_dataset(datasets, target_column=target_column)
+    data, features, target, preprocessor  = select_custom_dataset(datasets, target_column=target_column)
     
     # Split dataset into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(
@@ -133,7 +142,7 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
 
 
     # Extract DPG
-    dot = get_dpg(X_train, features, model, perc_var, decimal_threshold)
+    dot = get_dpg(X_train, features, model, perc_var, decimal_threshold, preprocessor)
     
     # Convert Graphviz Digraph to NetworkX DiGraph  
     dpg_model, nodes_list = digraph_to_nx(dot)
@@ -143,7 +152,7 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
         
     
     # Get metrics from the DPG
-    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
+    df_dpg = get_dpg_metrics(dpg_model, nodes_list, preprocessor)
     df = get_dpg_node_metrics(dpg_model, nodes_list)
     
     # Plot the DPG if requested
@@ -172,3 +181,18 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
         )
     
     return df, df_dpg
+
+def has_non_numerical_features(data):
+    """
+    Checks if the given DataFrame has at least one non-numerical feature.
+
+    Parameters:
+    - data (pd.DataFrame): The DataFrame to check.
+
+    Returns:
+    - bool: True if there is at least one non-numerical feature, False otherwise.
+    """
+    # Select columns that are not of numeric types
+    non_numeric_columns = data.select_dtypes(exclude=[np.number, 'bool']).columns
+    # Check if there are any non-numeric columns
+    return len(non_numeric_columns) > 0

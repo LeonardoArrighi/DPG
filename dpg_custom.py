@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
 
 
-    df, df_dpg_metrics = test.test_base_sklearn(datasets = args.ds,
+    df, df_dpg_metrics = test.test_base_custom(datasets = args.ds,
                                         target_column = args.target_column,
                                         n_learners = args.l, 
                                         perc_var = args.pv, 
