@@ -5,6 +5,10 @@ import math
 import os
 import numpy as np
 
+import random
+
+from itertools import islice
+
 import graphviz
 import networkx as nx
 
@@ -379,7 +383,7 @@ def generate_dot(dfg):
 
 
 
-def calculate_boundaries_old(dict):
+def calculate_boundaries(dict):
     """
     Calculates the boundaries of every feature for every class based on the provided dictionary of predecessors.
 
@@ -427,96 +431,6 @@ def calculate_boundaries_old(dict):
 
     # Return the dictionary containing class boundaries
     return boundaries_class
-
-def calculate_boundaries_2(class_dict):
-    """
-    Calculates the boundaries of every feature for every class based on the provided dictionary of predecessors.
-
-    Args:
-    class_dict: A dictionary where keys are class labels and values are lists of predecessor node labels.
-
-    Returns:
-    boundaries_class: A dictionary containing the boundaries for each feature of every class.
-    """
-    boundaries_class = {}
-
-    for key, nodes in class_dict.items():
-        if 'Class' in key or 'Pred' in key:
-            # Initialize boundary dictionary for current class
-            feature_bounds = {}
-
-            # Extract conditions from nodes and update boundary values
-            for node in nodes:
-                parts = re.split(' <= | > ', node)
-                feature = parts[0]
-                value = float(parts[1])
-                condition = '>' in node
-
-                if feature not in feature_bounds:
-                    # Initialize with infinities which will be replaced by actual values
-                    feature_bounds[feature] = [math.inf, -math.inf]  # [min '>' value, max '<=' value]
-
-                if condition:  # '>' condition
-                    if value < feature_bounds[feature][0]:
-                        feature_bounds[feature][0] = value
-                else:  # '<=' condition
-                    if value > feature_bounds[feature][1]:
-                        feature_bounds[feature][1] = value
-
-            # Construct boundary descriptions from feature_bounds
-            boundaries = []
-            for feature, (min_greater, max_lessequal) in feature_bounds.items():
-                if min_greater == math.inf:
-                    boundary = f"{feature} <= {max_lessequal}"
-                elif max_lessequal == -math.inf:
-                    boundary = f"{feature} > {min_greater}"
-                else:
-                    boundary = f"{min_greater} < {feature} <= {max_lessequal}"
-                boundaries.append(boundary)
-
-            boundaries_class[key] = boundaries
-
-    return boundaries_class
-
-def calculate_class_boundaries(key, nodes):
-    feature_bounds = {}
-    boundaries = []
-
-    for node in nodes:
-        parts = re.split(' <= | > ', node)
-        feature = parts[0]
-        value = float(parts[1])
-        condition = '>' in node
-
-        if feature not in feature_bounds:
-            feature_bounds[feature] = [math.inf, -math.inf]
-
-        if condition:  # '>' condition
-            if value < feature_bounds[feature][0]:
-                feature_bounds[feature][0] = value
-        else:  # '<=' condition
-            if value > feature_bounds[feature][1]:
-                feature_bounds[feature][1] = value
-
-    for feature, (min_greater, max_lessequal) in feature_bounds.items():
-        if min_greater == math.inf:
-            boundary = f"{feature} <= {max_lessequal}"
-        elif max_lessequal == -math.inf:
-            boundary = f"{feature} > {min_greater}"
-        else:
-            boundary = f"{min_greater} < {feature} <= {max_lessequal}"
-        boundaries.append(boundary)
-
-    return key, boundaries
-
-def calculate_boundaries(class_dict):
-    # Using joblib's Parallel and delayed
-    results = Parallel(n_jobs=-1)(delayed(calculate_class_boundaries)(key, nodes) for key, nodes in class_dict.items())
-    boundaries_class = dict(results)
-    return boundaries_class
-
-
-
 
 def get_dpg_metrics(dpg_model, nodes_list):
     """
@@ -566,12 +480,11 @@ def get_dpg_metrics(dpg_model, nodes_list):
         "Communities": asyn_lpa_communities_stack,
         "Class Bounds": class_bounds,
     }
-
     return data
 
 
 
-def get_dpg_node_metrics(dpg_model, nodes_list):
+def get_dpg_node_metrics(dpg_model, nodes_list, n_jobs=-1):
     """
     Extracts metrics from the nodes of a DPG model.
 
@@ -582,16 +495,26 @@ def get_dpg_node_metrics(dpg_model, nodes_list):
     Returns:
     df: A pandas DataFrame containing the metrics for each node in the DPG.
     """
+    print("Calculating node metrics...")
     
-    # Calculate the degree of each node
-    degree = dict(nx.degree(dpg_model))
-    # Calculate the in-degree (number of incoming edges) for each node
-    in_nodes = {node: dpg_model.in_degree(node) for node in list(dpg_model.nodes())}
-    # Calculate the out-degree (number of outgoing edges) for each node
-    out_nodes = {node: dpg_model.out_degree(node) for node in list(dpg_model.nodes())}
+    # Initialize dictionaries to store the degrees
+    in_nodes = {}
+    out_nodes = {}
+    degree = {}
+
+    print("Calculating node degree...")
+    # Single pass to calculate degrees
+    for node in dpg_model.nodes():
+        in_nodes[node] = dpg_model.in_degree(node)
+        out_nodes[node] = dpg_model.out_degree(node)
+        degree[node] = in_nodes[node] + out_nodes[node]
+
     # Calculate the betweenness centrality for each node
-    betweenness_centrality = nx.betweenness_centrality(dpg_model, weight='weight')
-    # Calculate the local reaching centrality for each node
+    print("Calculating node betweenness centrality... (100%)")
+    sample_size = int(1 * len(dpg_model.nodes()))  # For example, 100% of nodes
+    betweenness_centrality = nx.betweenness_centrality(dpg_model, k=sample_size, normalized=True, weight='weight', endpoints=False)
+
+    print(f"Calculating node local reaching centrality... ")
     local_reaching_centrality = {node: nx.local_reaching_centrality(dpg_model, node, weight='weight') for node in list(dpg_model.nodes())}
     
     # Create a dictionary to store the node metrics
