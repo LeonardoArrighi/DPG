@@ -2,3 +2,7 @@
 __pycache__/
 venv/*
 dpg/__pycache__/*
+*.png
+*.jpg
+*.csv
+*.txt
