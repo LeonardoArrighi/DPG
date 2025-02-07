@@ -1,6 +1,6 @@
 .env
 __pycache__/
-venv/*
+.venv/*
 dpg/__pycache__/*
 *.png
 *.jpg

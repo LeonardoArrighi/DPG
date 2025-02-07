@@ -154,95 +154,55 @@ def tracing_ensemble(case_id, sample, ensemble, feature_names, decimal_threshold
 
 def filter_log(log, perc_var, n_jobs=-1):
     """
-    Filters a log based on the variant percentage. Variants (unique sequences of activities for cases) 
+    Filters an event log based on the variant percentage. Variants (unique sequences of activities for cases) 
     that occur less than the specified threshold are removed from the log.
 
     Args:
-    log: A pandas DataFrame containing the event log with columns 'case:concept:name' and 'concept:name'.
-    perc_var: A float representing the minimum percentage of total traces a variant must have to be kept.
-    n_jobs: Number of parallel jobs to use. Default is -1 (use all available CPUs).
+        log (pd.DataFrame): Event log with columns 'case:concept:name' and 'concept:name'.
+        perc_var (float): Minimum percentage of total traces a variant must have to be kept.
+        n_jobs (int): Number of parallel jobs (-1 for all CPUs).
 
     Returns:
-    log: A filtered pandas DataFrame containing only the cases and activities that meet the variant percentage threshold.
+        pd.DataFrame: Filtered event log with only valid cases and activities.
     """
-
-    def process_chunk(chunk):
-        # Filter the log DataFrame to only include cases from the current chunk
-        filtered_log = log[log['case:concept:name'].isin(chunk)]
-        grouped = filtered_log.groupby('case:concept:name')['concept:name'].agg('|'.join)
-        # Invert the series to a dictionary where keys are the concatenated 'concept:name' and values are lists of cases
-        chunk_variants = {}
-        for case, key in grouped.items():
-            if key in chunk_variants:
-                chunk_variants[key].append(case)
-            else:
-                chunk_variants[key] = [case]
-        
-        return chunk_variants
-
-    # Split the cases into chunks for parallel processing
-    cases = log["case:concept:name"].unique()
+    log['case:concept:name'] = log['case:concept:name'].astype(str)
     
-    # If n_jobs is -1, use all available CPUs, otherwise use the provided n_jobs
     if n_jobs == -1:
-        n_jobs = os.cpu_count()  # Get the number of available CPU cores
+        n_jobs = os.cpu_count()
     
-    # Adjust n_jobs if there are fewer cases than n_jobs
-    n_jobs = min(n_jobs, len(cases))  # Ensure n_jobs is not larger than the number of cases
+    # Step 1: Compute activity sequences per case (i.e., variants)
+    case_variants = log.groupby('case:concept:name')['concept:name'].apply(tuple)
     
-    # Calculate chunk size
-    chunk_size = len(cases) // n_jobs if len(cases) // n_jobs > 0 else 1  # Ensure chunk_size is at least 1
-    
-    # Split the cases into chunks
-    chunks = [cases[i:i + chunk_size] for i in range(0, len(cases), chunk_size)]
-    
-    # Process each chunk in parallel
-    results = Parallel(n_jobs=n_jobs)(delayed(process_chunk)(chunk) for chunk in chunks)
+    # Step 2: Count unique variant occurrences
+    variant_counts = case_variants.value_counts()
 
-    # Combine results into a single dictionary
-    variants = {}
-    for result in results:
-        for key, value in result.items():
-            if key in variants:
-                variants[key].extend(value)
-            else:
-                variants[key] = value
+    # Step 3: Compute threshold count
+    min_occurrences = np.ceil(len(case_variants) * perc_var)
 
-    # Get the total number of unique traces in the log
-    total_traces = log["case:concept:name"].nunique()
+    # Step 4: Identify variants meeting the threshold
+    valid_variants = set(variant_counts[variant_counts >= min_occurrences].index)
 
-    # Helper function to filter variants in parallel
-    def filter_variants(chunk):
-        local_cases, local_activities = [], []
-        for k, v in chunk.items():
-            if len(v) / total_traces >= perc_var:
-                for case in v:
-                    for act in k.split("|"):
-                        local_cases.append(case)
-                        local_activities.append(act)
-        return local_cases, local_activities
+    # Step 5: Split cases into chunks for parallel processing
+    cases_list = [cases for cases in np.array_split(case_variants.index, n_jobs) if len(cases) > 0]
 
-    # Split the dictionary of variants into chunks for filtering
-    variant_items = list(variants.items())
-    
-    # Split variant_items into chunks
-    chunk_size = len(variant_items) // n_jobs if len(variant_items) // n_jobs > 0 else 1  # Ensure chunk_size is at least 1
-    chunks = [variant_items[i:i + chunk_size] for i in range(0, len(variant_items), chunk_size)]
-    
-    # Process filtering in parallel
-    results = Parallel(n_jobs=n_jobs)(delayed(filter_variants)(dict(chunk)) for chunk in chunks)
+    # Step 6: Function to filter valid cases
+    def filter_cases(chunk):
+        return [case for case in chunk if case in case_variants.index and case_variants[case] in valid_variants]
 
-    # Combine results into lists of cases and activities
-    cases, activities = [], []
-    for local_cases, local_activities in results:
-        cases.extend(local_cases)
-        activities.extend(local_activities)
+    # Step 7: Parallel processing with error handling
+    try:
+        valid_cases = Parallel(n_jobs=n_jobs)(
+            delayed(filter_cases)(chunk) for chunk in cases_list
+        )
+    except Exception as e:
+        print(f"Parallel processing failed: {e}")
+        raise
 
-    # Ensure both lists are of the same length before creating DataFrame
-    assert len(cases) == len(activities), f"Length mismatch: {len(cases)} cases vs {len(activities)} activities"
+    # Flatten valid cases
+    valid_cases = set(sum(valid_cases, []))
 
-    # Create a new DataFrame from the filtered cases and activities
-    filtered_log = pd.DataFrame(zip(cases, activities), columns=["case:concept:name", "concept:name"])
+    # Step 8: Filter the original log
+    filtered_log = log[log['case:concept:name'].isin(valid_cases)].copy()
 
     return filtered_log
 
