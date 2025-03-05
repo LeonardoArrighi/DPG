@@ -148,8 +148,8 @@ def main(file):
             
             for ensemble in list_of_ensembles:
                 run = neptune.init_run(
-                    project="sbarbonjr/DPGPOAC",
-                    api_token="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI5ZTM0MGEzOC1mMzM1LTRkZmMtOGRlNC00NTBmZDY3ODQ4ZTgifQ==",
+                    project="XXX/DPGPOAC",
+                    api_token="XXX",
                 )  # your credentials
                 run["file"] = file    
                 print(file)
