@@ -67,9 +67,7 @@ class DataPreprocessor:
         for idx, row in enumerate(data):
             if 'Class' not in row: 
                 feature, operator, value = self.parse_feature_string(row)
-                print('encoded_feature:', row)
                 decoded_feature = self.decode_feature(feature.replace(" ", ""), float(value), operator)
-                print('decoded_feature:', decoded_feature)
                 data.iloc[idx] = decoded_feature
         return data
 
