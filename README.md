@@ -14,6 +14,8 @@ DPG provides descriptive metrics that enhance the understanding of the decisions
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/custom_l2.jpg?raw=true" width="600" />
 </p>
 
+---
+
 ## Installation
 
 To install DPG locally, first clone the repository:
@@ -65,7 +67,49 @@ The graph-based nature of DPG provides significant enhancements in the direction
 ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_constraints.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_bc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_lrc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_community.png) |
 |Constraints(Class 1) = val3 < F1 ≤ val1, F2 ≤ val2 | BC(F2 ≤ val2) = 4/24 | LRC(F1 ≤ val1) = 6 / 7 | Community(Class 1) = F1 ≤ val1, F2 ≤ val2 |
 
-## The DPG library
+## Example usage (Python)
+
+You can also try DPG directly inside a Jupyter Notebook. Here's a minimal working example:
+
+Here is a minimal example of how to use DPG with a trained model and a CSV dataset (e.g., `datasets/custom.csv`) using `scikit-learn` and the DPG API:
+
+```python
+# Example in Jupyter Notebook
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from dpg.core import DecisionPredicateGraph
+from dpg.visualizer import plot_dpg
+
+# Load dataset (last column assumed to be target)
+df = pd.read_csv("datasets/custom.csv", index_col=0)
+X = df.iloc[:, :-1].replace([np.inf, -np.inf], np.nan).fillna(df.mean())
+y = df.iloc[:, -1]
+
+# Train simple Random Forest
+model = RandomForestClassifier(n_estimators=10, random_state=27)
+model.fit(X, y)
+
+# Create DPG
+feature_names = X.columns.tolist()
+class_names = np.unique(y).astype(str).tolist()
+dpg = DecisionPredicateGraph(
+    model=model,
+    feature_names=feature_names,
+    target_names=class_names,
+    perc_var=0.0001,
+    decimal_threshold=2,
+    n_jobs=1
+)
+dot = dpg.fit(X.values)
+dpg_model, nodes_list = dpg.to_networkx(dot)
+
+# Extract and visualize
+dpg_metrics = dpg.extract_graph_metrics(dpg_model, nodes_list)
+df_nodes = dpg.extract_node_metrics(dpg_model, nodes_list)
+plot_dpg("dpg_output.png", dot, df_nodes, dpg_metrics, save_dir="datasets", communities=True, class_flag=True)
+```
+```
 
 #### Main script
 The library contains two different scripts to apply DPG:
