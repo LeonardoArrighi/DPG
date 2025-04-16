@@ -15,15 +15,21 @@ DPG provides descriptive metrics that enhance the understanding of the decisions
 </p>
 
 ## Installation
-You can install the DPG library in development mode using `poetry`:
+
+To install DPG locally, first clone the repository:
 
 ```bash
-poetry install
+git clone https://github.com/LeonardoArrighi/DPG.git
+cd DPG
 ```
 
-To enter the virtual environment:
+Then, install the DPG library in development mode using `pip`:
 ```bash
-poetry shell
+pip install -e .
+```
+Alternatively, if using `poetry`:
+```bash
+poetry install
 ```
 
 To run any script directly:
@@ -31,10 +37,7 @@ To run any script directly:
 poetry run python scripts/run_dpg_standard.py
 ```
 
-Alternatively, if using `pip`:
-```bash
-pip install -e .
-```
+
 
 ---
 
