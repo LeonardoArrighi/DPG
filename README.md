@@ -83,7 +83,7 @@ from dpg.visualizer import plot_dpg
 
 # Load dataset (last column assumed to be target)
 df = pd.read_csv("datasets/custom.csv", index_col=0)
-X = df.iloc[:, :-1].replace([np.inf, -np.inf], np.nan).fillna(df.mean())
+X = df.iloc[:, :-1]
 y = df.iloc[:, -1]
 
 # Train simple Random Forest
@@ -97,7 +97,7 @@ dpg = DecisionPredicateGraph(
     model=model,
     feature_names=feature_names,
     target_names=class_names,
-    perc_var=0.0001,
+    perc_var=0.01,
     decimal_threshold=2,
     n_jobs=1
 )
@@ -109,41 +109,33 @@ dpg_metrics = dpg.extract_graph_metrics(dpg_model, nodes_list)
 df_nodes = dpg.extract_node_metrics(dpg_model, nodes_list)
 plot_dpg("dpg_output.png", dot, df_nodes, dpg_metrics, save_dir="datasets", communities=True, class_flag=True)
 ```
-```
+#### Output:
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/dpg_output.png_communities.png?raw=true" width="600" />
+</p>
 
-#### Main script
+#### CLI scripts
 The library contains two different scripts to apply DPG:
 - `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
-You can also run them with `poetry` as CLI commands (if entry points are defined):
-```bash
-poetry run dpg
-```
-
-#### Tree-based ensemble model: Random Forest
-Random Forest, an example of a tree-based ensemble model, is already implemented within the scripts used by DPG. 
-
-Specifically, the model is within `sklearn_standard_dpg.py`/`sklearn_custom_dpg.py`, the scripts used to manage the dataset, train the model, apply DPG, and apply the metrics.
-Some Random Forest parameters cannot be modified outside the script where they are defined due to implementation choice.
-
-#### Metrics and visualization
+#### DPG implementation
 The library also contains two other essential scripts:
 - `core.py` contains all the functions used to calculate and create the DPG and the metrics.
 - `visualizer.py` contains the functions used to manage the visualization of DPG.
 
 #### Output
-The DPG application, through `dpg_standard.py` or `dpg_custom.py`, produces several files:
+The DPG output, through `dpg_standard.py` or `dpg_custom.py`, produces several files:
 - the visualization of DPG in a dedicated environment, which can be zoomed and saved;
 - a `.txt` file containing the DPG metrics;
 - a `.csv` file containing the information about all the nodes of the DPG and their associated metrics;
 - a `.txt` file containing the Random Forest statistics (accuracy, confusion matrix, classification report)
 
 ## Easy usage
-Usage: `python dpg_standard.py --ds <dataset_name> --l <integer_number> --pv <threshold_value> --t <integer_number> --model_name <str_model_name> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
+Usage: `python dpg_standard.py --dataset <dataset_name> --n_learners <integer_number> --pv <threshold_value> --t <integer_number> --model_name <str_model_name> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
 Where:
-- `ds` is the name of the standard classification `sklearn` dataset to be analyzed;
-- `l` is the number of base learners for the Random Forest;
+- `dataset` is the name of the standard classification `sklearn` dataset to be analyzed;
+- `n_learners` is the number of base learners for the Random Forest;
 - `pv` is the threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees;
 - `t` is the decimal precision of each feature;
 - `model_name` is the name of the `sklearn` model chosen to perform classification (`RandomForestClassifier`,`BaggingClassifier`,`ExtraTreesClassifier`,`AdaBoostClassifier` are currently available);
@@ -164,18 +156,18 @@ The usage of `dpg_custom.py` is similar, but it requires another parameter:
 Some examples can be appreciated in the `examples` folder: https://github.com/LeonardoArrighi/DPG/tree/main/examples
 
 In particular, the following DPG is obtained by transforming a Random Forest with 5 base learners, trained on Iris dataset.
-The used command is `python dpg_standard.py --ds iris --l 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples`.
+The used command is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2.png" width="800" />
 </p>
 
 The following visualizations are obtained using the same parameters as the previous example, but they show two different metrics: _Community_ and _Betweenness centrality_.
-The used command for showing communities is `python dpg_standard.py --ds iris --l 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --communities`.
+The used command for showing communities is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --communities`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2_communities.png" width="800" />
 </p>
 
-The used command for showing a specific property is `python dpg_standard.py --ds iris --l 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --attribute "Betweenness centrality" --class_flag`.
+The used command for showing a specific property is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --attribute "Betweenness centrality" --class_flag`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2_Betweennesscentrality.png" width="800" />
 </p>
