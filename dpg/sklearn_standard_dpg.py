@@ -10,7 +10,7 @@ from sklearn.datasets import (
 )
 from sklearn.base import is_classifier, is_regressor
 
-from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
+from .core import DecisionPredicateGraph
 from .visualizer import plot_dpg
 
 def select_dataset(name):
@@ -124,18 +124,26 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, model_n
 
 
     # Extract DPG
-    dot = get_dpg(X_train, dt.feature_names, model, perc_var, decimal_threshold)
+    dpg = DecisionPredicateGraph(
+        model=model,
+        feature_names=dt.feature_names,
+        target_names=dt.target_names,
+        perc_var=perc_var,
+        decimal_threshold=decimal_threshold,
+        n_jobs=1
+    )
+    dot = dpg.fit(X_train)
     
     # Convert Graphviz Digraph to NetworkX DiGraph
-    dpg_model, nodes_list = digraph_to_nx(dot)
+    dpg_model, nodes_list = dpg.to_networkx(dot)
 
     if len(nodes_list) < 2:
         print("Warning: Less than two nodes resulted.")
         return
     
     # Get metrics from the DPG
-    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
-    df = get_dpg_node_metrics(dpg_model, nodes_list)
+    df_dpg = dpg.extract_graph_metrics(dpg_model, nodes_list)
+    df = dpg.extract_node_metrics(dpg_model, nodes_list)
     
     # Plot the DPG if requested
     if plot:
