@@ -1,4 +1,10 @@
 # Decision Predicate Graph (DPG)
+
+<p align="center">
+  <img src="https://github.com/LeonardoArrighi/DPG/DPG.png" width="600" />
+</p>
+
+
 DPG is a model-agnostic tool to provide a global interpretation of tree-based ensemble models, addressing transparency and explainability challenges.
 
 DPG is a graph structure that captures the tree-based ensemble model and learned dataset details, preserving the relations among features, logical decisions, and predictions towards emphasising insightful points.
@@ -7,6 +13,30 @@ DPG provides descriptive metrics that enhance the understanding of the decisions
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/examples/custom_l2.jpg?raw=true" width="600" />
 </p>
+
+## Installation
+You can install the DPG library in development mode using `poetry`:
+
+```bash
+poetry install
+```
+
+To enter the virtual environment:
+```bash
+poetry shell
+```
+
+To run any script directly:
+```bash
+poetry run python scripts/run_dpg_standard.py
+```
+
+Alternatively, if using `pip`:
+```bash
+pip install -e .
+```
+
+---
 
 ## The structure
 The concept behind DPG is to convert a generic tree-based ensemble model for classification into a graph, where:
@@ -38,6 +68,11 @@ The graph-based nature of DPG provides significant enhancements in the direction
 The library contains two different scripts to apply DPG:
 - `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
 - `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
+
+You can also run them with `poetry` as CLI commands (if entry points are defined):
+```bash
+poetry run dpg
+```
 
 #### Tree-based ensemble model: Random Forest
 Random Forest, an example of a tree-based ensemble model, is already implemented within the scripts used by DPG. 
@@ -74,7 +109,6 @@ Where:
   
 Disclaimer: `attribute` and `communities` can not be added together, since DPG supports just one of the two visualizations.
 
-
 The usage of `dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
 - while `ds` is the path of the directory where the dataset is.
@@ -103,8 +137,7 @@ The used command for showing a specific property is `python dpg_standard.py --ds
 ## Citation
 If you use this for research, please cite. Here is an example BibTeX entry:
 
-
-```
+```bibtex
 @inproceedings{arrighi2024dpg,
   title={Decision Predicate Graphs: Enhancing Interpretability in Tree Ensembles},
   author={Arrighi, Leonardo and Pennella, Luca and Marques Tavares, Gabriel and Barbon Junior, Sylvio},
@@ -115,4 +148,3 @@ If you use this for research, please cite. Here is an example BibTeX entry:
   doi = {10.1007/978-3-031-63797-1_16},
   publisher = {Springer Nature Switzerland},
 }
-```
