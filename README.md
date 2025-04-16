@@ -1,7 +1,7 @@
 # Decision Predicate Graph (DPG)
 
 <p align="center">
-  <img src="https://github.com/LeonardoArrighi/DPG/DPG.png" width="600" />
+  <img src="https://github.com/LeonardoArrighi/DPG/blob/main/DPG.png" width="600" />
 </p>
 
 
