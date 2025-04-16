@@ -32,6 +32,7 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
     None
     """
     print("Plotting DPG...")
+    # substitui rankdir=LR ou R por TB no texto da source
     # Basic color scheme if no attribute or communities are specified
     if attribute is None and not communities:
         for index, row in df.iterrows():
@@ -124,8 +125,13 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
     # Clean up temporary files
     delete_folder_contents("temp")
 
-def change_node_color(dot, node, color):
-    dot.node(node, style='filled', fillcolor=color)
+def change_node_color(dot, node_id, fillcolor):
+    r, g, b = int(fillcolor[1:3], 16), int(fillcolor[3:5], 16), int(fillcolor[5:7], 16)
+    brightness = (r * 299 + g * 587 + b * 114) / 1000  # fórmula perceptual
+    fontcolor = "white" if brightness < 100 else "black"
+
+    # Modifica o nó no objeto Graphviz
+    dot.node(node_id, style="filled", fillcolor=fillcolor, fontcolor=fontcolor)
 
 def normalize_data(df, attribute, colormap):
     norm = Normalize(vmin=df[attribute].min(), vmax=df[attribute].max())
