@@ -38,7 +38,6 @@ six = "1.16.0"
 threadpoolctl = "3.5.0"
 tqdm = "4.67.1"
 tzdata = "2024.1"
-neptune = "1.13.0"
 
 [tool.poetry.extras]
 dev = ["pytest", "ipython", "jupyter"]
