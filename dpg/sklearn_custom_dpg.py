@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 from sklearn.model_selection import train_test_split
 from sklearn.base import is_classifier, is_regressor
 
-from .core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
+from .core import DecisionPredicateGraph
 from .visualizer import plot_dpg
 
 
@@ -17,34 +17,37 @@ def select_custom_dataset(path, target_column):
     Loads a custom dataset from a CSV file, separates the target column, and prepares the data for modeling.
 
     Args:
-    path: The file path to the CSV dataset.
-    target_column: The name of the column to be used as the target variable.
+        path: The file path to the CSV dataset.
+        target_column: The name of the column to be used as the target variable.
 
     Returns:
-    data: A numpy array containing the feature data.
-    features: A numpy array containing the feature names.
-    target: A numpy array containing the target variable.
+        data: A numpy array containing the feature data.
+        features: A numpy array containing the feature names.
+        target: A numpy array containing the target variable.
     """
-    # Load the dataset from the specified CSV file
     df = pd.read_csv(path, sep=',')
-    
-    # Extract the target variable
-    target = np.array(df[target_column])
-    
-    # Remove the target column from the dataframe
-    df.drop(columns=[target_column], inplace=True)
-    
-    # Convert the feature data to a numpy array
-    data = []
-    for index, row in df.iterrows():
-        data.append([row[j] for j in df.columns])
-    data = np.array(data)
-    
-    # Extract feature names
-    features = np.array([i for i in df.columns])
 
-    # Return the feature data, feature names, and target variable
+    if target_column is None:
+        target_column = df.columns[-1]
+        print(f"[INFO] No target column specified. Using last column: {target_column}")
+
+    # Extract the target variable
+    target = df[target_column].values
+
+    # Drop target column from features
+    df.drop(columns=[target_column], inplace=True)
+
+    # Sanitize feature data
+    df = df.apply(pd.to_numeric, errors='coerce')  # convert non-numeric to NaN
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+    df.fillna(df.mean(), inplace=True)
+
+    # Round and convert to float64
+    data = np.round(df.values, 2).astype(np.float64)
+    features = df.columns.values
+
     return data, features, target
+
 
 
 
@@ -71,7 +74,10 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
     df_dpg: A pandas DataFrame containing DPG metrics.
     """
     
-    # Load dataset
+    
+    if datasets is None:
+        raise Exception("Please provide a dataset.")
+
     data, features, target = select_custom_dataset(datasets, target_column=target_column)
     
     # Split dataset into training and test sets
@@ -133,18 +139,27 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
 
 
     # Extract DPG
-    dot = get_dpg(X_train, features, model, perc_var, decimal_threshold)
+    dpg = DecisionPredicateGraph(
+        model=model,
+        feature_names=features,
+        target_names=np.unique(target).astype(str).tolist(),
+        perc_var=perc_var,
+        decimal_threshold=decimal_threshold,
+        n_jobs=1
+    )
+    dot = dpg.fit(X_train)
     
-    # Convert Graphviz Digraph to NetworkX DiGraph  
-    dpg_model, nodes_list = digraph_to_nx(dot)
+    # Convert Graphviz Digraph to NetworkX DiGraph
+    dpg_model, nodes_list = dpg.to_networkx(dot)
 
     if len(nodes_list) < 2:
-        raise Exception("Warning: Less than two nodes resulted.")
-        
+        print("Warning: Less than two nodes resulted.")
+        return
     
     # Get metrics from the DPG
-    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
-    df = get_dpg_node_metrics(dpg_model, nodes_list)
+    df_dpg = dpg.extract_graph_metrics(dpg_model, nodes_list)
+    df = dpg.extract_node_metrics(dpg_model, nodes_list)
+    
     
     # Plot the DPG if requested
     if plot:
