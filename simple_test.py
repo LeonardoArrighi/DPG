@@ -16,7 +16,7 @@ model = RandomForestClassifier(n_estimators=num_bl, random_state=27)
 
 # Carregamento do dataset
 current_path = os.getcwd()
-dataset_path = os.path.join(current_path, "datasets_poac", dataset)
+dataset_path = os.path.join(current_path, "datasets", dataset)
 dataset_raw = pd.read_csv(dataset_path, index_col=0)
 
 features = dataset_raw.iloc[:, :-1]
@@ -54,21 +54,21 @@ mean_accuracy = np.mean(accuracy_scores)
 metric_suffix = f"acc_{np.round(mean_accuracy, 2)}"
 
 # Extração do DPG
-dpg = DecisionPredicateGraph(model=model, feature_names=feature_names, perc_var=perc_var, decimal_threshold=2, n_jobs=1)
+dpg = DecisionPredicateGraph(model=model, feature_names=feature_names, target_names=np.unique(y_train).astype(str).tolist(),  perc_var=perc_var, decimal_threshold=2, n_jobs=1)
 dot = dpg.fit(X_train.values)
 dpg_model, nodes_list = dpg.to_networkx(dot)
 
 # Extração de métricas
-dpg_metrics = dpg.extract_graph_metrics(dpg_model, nodes_list, class_names=np.unique(y).astype(str).tolist())
+dpg_metrics = dpg.extract_graph_metrics(dpg_model, nodes_list)
 df = dpg.extract_node_metrics(dpg_model, nodes_list)
 
 # Salvando métricas
-metrics_file = os.path.join(current_path, f'datasets_poac/{model.__class__.__name__}_{approach}_s{features.shape[0]}_bl{num_bl}_{metric_suffix}_perc_{perc_var}_dpg_metrics.txt')
+metrics_file = os.path.join(current_path, f'datasets/{model.__class__.__name__}_{approach}_s{features.shape[0]}_bl{num_bl}_{metric_suffix}_perc_{perc_var}_dpg_metrics.txt')
 with open(metrics_file, 'w') as f:
     for key, value in dpg_metrics.items():
         f.write(f"{key}: {value}\n")
 
-df.to_csv(os.path.join(current_path, f'datasets_poac/{model.__class__.__name__}_{approach}_s{features.shape[0]}_bl{num_bl}_{metric_suffix}_perc_{perc_var}_node_metrics.csv'), encoding='utf-8')
+df.to_csv(os.path.join(current_path, f'datasets/{model.__class__.__name__}_{approach}_s{features.shape[0]}_bl{num_bl}_{metric_suffix}_perc_{perc_var}_node_metrics.csv'), encoding='utf-8')
 
 # Plotagem
 plot_dpg(
@@ -76,7 +76,7 @@ plot_dpg(
     dot,
     df,
     dpg_metrics,
-    save_dir="datasets_poac/",
+    save_dir="datasets/",
     communities=True,
     class_flag=True
 )
