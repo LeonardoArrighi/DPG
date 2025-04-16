@@ -32,7 +32,6 @@ def plot_dpg(plot_name, dot, df, df_dpg, save_dir="examples/", attribute=None, c
     None
     """
     print("Plotting DPG...")
-    # substitui rankdir=LR ou R por TB no texto da source
     # Basic color scheme if no attribute or communities are specified
     if attribute is None and not communities:
         for index, row in df.iterrows():
