@@ -51,7 +51,7 @@ def select_custom_dataset(path, target_column):
 
 
 
-def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_threshold, model_name='RandomForestClassifier', file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False):
+def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_threshold, model_name='RandomForestClassifier', file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False, n_jobs=-1):
     """
     Trains a Random Forest classifier on a selected dataset, evaluates its performance, and optionally plots the DPG.
 
@@ -145,7 +145,7 @@ def test_base_sklearn(datasets, target_column, n_learners, perc_var, decimal_thr
         target_names=np.unique(target).astype(str).tolist(),
         perc_var=perc_var,
         decimal_threshold=decimal_threshold,
-        n_jobs=1
+        n_jobs=n_jobs
     )
     dot = dpg.fit(X_train)
     

@@ -21,6 +21,7 @@ if __name__ == "__main__":
     parser.add_argument("--attribute", type=str, default=None, help="A specific node attribute to visualize")
     parser.add_argument("--communities", action='store_true', help="Boolean indicating whether to visualize communities, add the argument to use it as True")
     parser.add_argument("--class_flag", action='store_true', help="Boolean indicating whether to highlight class nodes, add the argument to use it as True")
+    parser.add_argument("--n_jobs", type=int, default=-1, help="Number of jobs to run in parallel. Default is -1 (use all processors).")
     args = parser.parse_args()
 
 
@@ -36,7 +37,8 @@ if __name__ == "__main__":
                                         save_plot_dir = args.save_plot_dir, 
                                         attribute = args.attribute, 
                                         communities = args.communities, 
-                                        class_flag = args.class_flag)
+                                        class_flag = args.class_flag,
+                                        n_jobs = args.n_jobs)
 
     df.sort_values(['Degree'])
 
