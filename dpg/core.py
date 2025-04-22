@@ -50,6 +50,7 @@ class DecisionPredicateGraph:
     def tracing_ensemble(self, case_id, sample):
         is_regressor = isinstance(self.model, (RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor))
         sample = sample.reshape(-1)
+        trace = []
         for i, tree in enumerate(self.model.estimators_):
             tree_ = tree.tree_
             node_index = 0
@@ -60,13 +61,12 @@ class DecisionPredicateGraph:
                 if left == right:
                     if is_regressor:
                         pred = round(tree_.value[node_index][0][0], 2)
-                        yield [prefix, f"Pred {pred}"]
+                        trace.append([prefix, f"Pred {pred}"])
                     else:
                         pred_class = tree_.value[node_index].argmax()
-                        #Using the original class name
                         if self.target_names is not None:
                             pred_class = self.target_names[pred_class]
-                        yield [prefix, f"Class {pred_class}"]
+                        trace.append([prefix, f"Class {pred_class}"])
                     break
                 feature_index = tree_.feature[node_index]
                 threshold = round(tree_.threshold[node_index], self.decimal_threshold)
@@ -78,7 +78,8 @@ class DecisionPredicateGraph:
                 else:
                     condition = f"{feature_name} > {threshold}"
                     node_index = right
-                yield [prefix, condition]
+                trace.append([prefix, condition])
+        return trace
 
     def filter_log(self, log):
         from collections import defaultdict
