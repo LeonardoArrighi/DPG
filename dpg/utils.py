@@ -1,6 +1,8 @@
 import os
 import shutil
-
+import re
+import ast
+import pandas as pd 
 
 
 def highlight_class_node(dot):
@@ -69,3 +71,134 @@ def delete_folder_contents(folder_path):
         except Exception as e:
             # Print an error message if the deletion fails
             print(f'Failed to delete {item_path}. Reason: {e}')
+
+
+def parse_class_bounds(raw_text: str) -> dict:
+    """
+    Parse raw class bounds text into a structured dictionary.
+
+    Args:
+        raw_text (str): Raw string of class bounds (Python-like dict format).
+
+    Returns:
+        dict: Parsed class bounds with structure {class: {feature: (lower, upper)}}.
+    """
+    raw_dict = ast.literal_eval(raw_text.split("Class Bounds: ")[-1])
+    parsed = {}
+
+    for cls, constraints in raw_dict.items():
+        parsed[cls] = {}
+        for entry in constraints:
+            entry = entry.strip()
+            # Match patterns like 'low < feature <= high'
+            match = re.match(r"([\d.eE+-]+)\s*<\s*([a-zA-Z0-9_ ]+)\s*<=\s*([\d.eE+-]+)", entry)
+            if match:
+                low, feat, high = match.groups()
+                feat = feat.strip()
+                parsed[cls][feat] = (float(low), float(high))
+            else:
+                # Match patterns like 'feature <= high'
+                match = re.match(r"([a-zA-Z0-9_ ]+)\s*<=\s*([\d.eE+-]+)", entry)
+                if match:
+                    feat, high = match.groups()
+                    feat = feat.strip()
+                    parsed[cls][feat] = (None, float(high))
+                else:
+                    # Match patterns like 'low < feature'
+                    match = re.match(r"([\d.eE+-]+)\s*<\s*([a-zA-Z0-9_ ]+)", entry)
+                    if match:
+                        low, feat = match.groups()
+                        feat = feat.strip()
+                        parsed[cls][feat] = (float(low), None)
+                    else:
+                        # Match patterns like 'feature > low'
+                        match = re.match(r"([a-zA-Z0-9_ ]+)\s*>\s*([\d.eE+-]+)", entry)
+                        if match:
+                            feat, low = match.groups()
+                            feat = feat.strip()
+                            parsed[cls][feat] = (float(low), None)
+
+def parse_class_bounds_from_raw(raw_text: str) -> pd.DataFrame:
+    """
+    Parses a raw string representation of class bounds into a structured DataFrame.
+
+    Parameters:
+        raw_text (str): Raw string starting with "Class Bounds: {...}"
+
+    Returns:
+        pd.DataFrame: A DataFrame with columns [Class, Feature, Min, Max]
+    """
+    # Extract the dictionary portion
+    class_bounds_str = raw_text.split("Class Bounds: ")[-1]
+    class_bounds_dict = ast.literal_eval(class_bounds_str)
+
+    # Pattern for parsing constraints like 'low < feature <= high' or 'feature <= high'
+    pattern = re.compile(r"(?:(\d+\.?\d*)\s*<\s*)?([a-zA-Z0-9_ ]+?)\s*(?:<=|<|>)\s*(\d+\.?\d*)")
+
+    records = []
+    for cls, constraints in class_bounds_dict.items():
+        for constraint in constraints:
+            match = pattern.search(constraint)
+            if match:
+                low, feat, high = match.groups()
+                feat = feat.strip()
+                records.append({
+                    'Class': cls,
+                    'Feature': feat,
+                    'Min': float(low) if low else None,
+                    'Max': float(high)
+                })
+
+    return pd.DataFrame(records)
+
+def get_feature_bound_groups_by_class(df_bounds: pd.DataFrame) -> pd.DataFrame:
+    """
+    Groups classes by shared Min/Max values per feature, to emphasize which groups of classes share values.
+
+    Parameters:
+        df_bounds (pd.DataFrame): DataFrame with ['Class', 'Feature', 'Min', 'Max']
+
+    Returns:
+        pd.DataFrame: A DataFrame showing grouped class sets for Min and Max per feature
+    """
+    # Pivot to wide format for comparison
+    min_pivot = df_bounds.pivot(index='Feature', columns='Class', values='Min')
+    max_pivot = df_bounds.pivot(index='Feature', columns='Class', values='Max')
+
+    def group_classes_by_value(row):
+        groups = row.dropna().groupby(row).groups
+        return [sorted(list(g)) for g in groups.values()] if len(groups) > 1 else []
+
+    # Apply to both min and max
+    min_groups = min_pivot.apply(group_classes_by_value, axis=1)
+    max_groups = max_pivot.apply(group_classes_by_value, axis=1)
+
+    # Format into readable strings
+    min_groups_fmt = min_groups.apply(lambda lst: "; ".join([", ".join(g) for g in lst]) if lst else "")
+    max_groups_fmt = max_groups.apply(lambda lst: "; ".join([", ".join(g) for g in lst]) if lst else "")
+
+    # Combine into final DataFrame
+    grouped_df = pd.DataFrame({
+        'Min_Classes_Groups': min_groups_fmt,
+        'Max_Classes_Groups': max_groups_fmt
+    })
+
+    return grouped_df
+
+def parse_communities_from_raw(raw_text: str):
+    """
+    Parse the raw text representation of a list of sets containing constraints into Python data.
+
+    Args:
+        raw_text (str): Raw string containing list of sets with constraint expressions.
+
+    Returns:
+        list of sets: Each set contains constraint strings for a community.
+    """
+    try:
+        communities = ast.literal_eval(raw_text.strip())
+        if isinstance(communities, list) and all(isinstance(c, set) for c in communities):
+            return communities
+    except Exception as e:
+        print(f"Parsing failed: {e}")
+    return []

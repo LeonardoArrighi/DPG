@@ -21,6 +21,7 @@ class DecisionPredicateGraph:
         self.perc_var = perc_var
         self.decimal_threshold = decimal_threshold
         self.n_jobs = n_jobs
+        self.dpg_dot_model = None
 
     def fit(self, X_train):
         print("\nStarting DPG extraction *****************************************")
@@ -51,7 +52,8 @@ class DecisionPredicateGraph:
         dfg = self.discover_dfg(log_df)
 
         print('Extracting graph...')
-        return self.generate_dot(dfg)
+        self.dpg_dot_model = self.generate_dot(dfg)
+        return self.dpg_dot_model
 
     def tracing_ensemble(self, case_id, sample):
         is_regressor = isinstance(self.model, (RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor))
@@ -193,7 +195,11 @@ class DecisionPredicateGraph:
             )
         return dot
 
-    def to_networkx(self, graphviz_graph):
+    def to_networkx(self, graphviz_graph=None):
+        if graphviz_graph is None:
+            graphviz_graph = self.dpg_dot_model
+        if not isinstance(graphviz_graph, graphviz.Digraph):
+            raise TypeError("Input must be a Graphviz Digraph object.")
         networkx_graph = nx.DiGraph()
         nodes_list = []
         edges = []
