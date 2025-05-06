@@ -29,17 +29,11 @@ Then, install the DPG library in development mode using `pip`:
 ```bash
 pip install -e .
 ```
-Alternatively, if using `poetry`:
+
+Alternatively, if using `pip directly`:
 ```bash
-poetry install
+pip install git+https://github.com/LeonardoArrighi/DPG.git
 ```
-
-To run any script directly:
-```bash
-poetry run python scripts/run_dpg_standard.py
-```
-
-
 
 ---
 
