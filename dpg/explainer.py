@@ -8,16 +8,30 @@ import numpy as np
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 
+import matplotlib as mpl
+
+mpl.rcParams.update({
+    "figure.dpi": 150,
+    "figure.figsize": (12, 8),  # default size unless overridden
+    "axes.titlesize": 16,
+    "axes.labelsize": 14,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 12,
+    "font.family": "DejaVu Sans",  # or another like Arial, Times New Roman
+})
+
 class DecisionPredicateGraphExplainer:
     def __init__(self, dpg):
         print("Initializing DPGExplainer")
         self.dpg_model, self.nodes_list = dpg.to_networkx()
         self.graph_metrics = dpg.extract_graph_metrics(self.dpg_model, self.nodes_list)
         self.df_node_metrics = dpg.extract_node_metrics(self.dpg_model, self.nodes_list)
-        self.custom_colors = [
+        self.custom_colors_discrete = [
             "#E3C800", "#B09500", "#F0A30A", "#BD7000",
             "#FA6800", "#C73500", "#6D8764", "#3A5431"
         ]
+        self.custom_colors_continous = mcolors.LinearSegmentedColormap.from_list("gold_to_red", ["#E3C800", "#C73500"])
 
     #def plot_global_explanation(self, save_path=None):
         # Generate plots for class complexity, overlaps, structure
@@ -75,7 +89,7 @@ class DecisionPredicateGraphExplainer:
         plt.figure(figsize=(16, 10))
         sns.heatmap(
             df_norm,
-            cmap='YlGn',
+            cmap=self.custom_colors_continous,
             annot=annot_data,
             fmt='',
             cbar_kws={'label': 'Normalized Value'},
@@ -119,7 +133,7 @@ class DecisionPredicateGraphExplainer:
             feature_maxs[feat] = max(vals) if vals else 1
 
         # Custom palette
-        class_colors = {cls: self.custom_colors[i % len(self.custom_colors)] for i, cls in enumerate(classes)}
+        class_colors = {cls: self.custom_colors_discrete[i % len(self.custom_colors_discrete)] for i, cls in enumerate(classes)}
 
         # Set up plot
         plt.figure(figsize=(14, 7))
@@ -155,9 +169,9 @@ class DecisionPredicateGraphExplainer:
                     plt.plot([xi - cap_width/2, xi + cap_width/2], [hi_norm, hi_norm], color=color, linewidth=3)
 
                     # Value annotations
-                    plt.text(xi + 0.02, lo_norm, f"{lo_val:.2f}", va='bottom', ha='left',
+                    plt.text(xi + 0.05, lo_norm-0.05, f"{lo_val:.2f}", va='bottom', ha='left',
                             fontsize=font_size, color=color)
-                    plt.text(xi + 0.02, hi_norm, f"{hi_val:.2f}", va='top', ha='left',
+                    plt.text(xi + 0.05, hi_norm+0.05, f"{hi_val:.2f}", va='top', ha='left',
                             fontsize=font_size, color=color)
 
         plt.title("Class Feature Bounds (Normalized Min-Max with Caps, Spacing and Labels)", fontsize=14)
@@ -219,7 +233,7 @@ class DecisionPredicateGraphExplainer:
 
         # Plot
         plt.figure(figsize=(1.5 * len(df_freq.columns), 0.6 * len(df_freq)))
-        sns.heatmap(df_freq, cmap='YlOrBr', linewidths=0.5, linecolor='gray',
+        sns.heatmap(df_freq, cmap=self.custom_colors_continous, linewidths=0.5, linecolor='gray',
                     cbar=True, annot=True, fmt='d')
         plt.title('Feature Frequency per Class-based Community')
         plt.xlabel('Feature')
@@ -227,3 +241,11 @@ class DecisionPredicateGraphExplainer:
         plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
+    
+    @classmethod
+    def from_raw_data(cls, raw_data: dict):
+        dummy_dpg = type("DummyDPG", (), {})()
+        dummy_dpg.to_networkx = lambda: (None, None)
+        dummy_dpg.extract_graph_metrics = lambda g, n: raw_data
+        dummy_dpg.extract_node_metrics = lambda g, n: None
+        return cls(dummy_dpg)

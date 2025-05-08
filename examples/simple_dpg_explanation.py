@@ -34,6 +34,7 @@ dpg = DecisionPredicateGraph(
     decimal_threshold=2,
     n_jobs=1
 )
+
 dpg.fit(X)
 dpg_explainer = DPGExplainer(dpg)
 dpg_explainer.plot_class_bounds()
