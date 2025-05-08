@@ -4,6 +4,7 @@ import re
 import math
 import os
 import numpy as np
+from collections import Counter
 
 from tqdm import tqdm
 import graphviz
@@ -43,13 +44,16 @@ class DecisionPredicateGraph:
 
         log = [item for sublist in log for item in sublist]
         log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
-
+        
         print(f'Total of paths: {len(log_df["case:concept:name"].unique())}')
         if self.perc_var > 0:
             log_df = self.filter_log(log_df)
 
         print('Building DPG...')
-        dfg = self.discover_dfg(log_df)
+
+        #Counting to balance when dealing with imbalanced classes distribution
+        counts_dict = {f"Class {str(self.target_names[k])}": v for k, v in Counter(self.model.predict(X_train)).items()}
+        dfg = self.discover_dfg(log_df, counts_dict)
 
         print('Extracting graph...')
         self.dpg_dot_model = self.generate_dot(dfg)
@@ -138,8 +142,21 @@ class DecisionPredicateGraph:
                 case_ids_to_keep.update(case_ids)
         return log[log["case:concept:name"].isin(case_ids_to_keep)].copy()
 
-    def discover_dfg(self, log):
 
+
+
+    def discover_dfg(self, log, dict):
+
+        
+        class_df = (
+            log[log['concept:name'].str.startswith('Class')] 
+            .drop_duplicates(subset='case:concept:name')     
+            .rename(columns={'concept:name':'concept:class'})
+            [['case:concept:name','concept:class']]          
+        )
+        log = log.merge(class_df, on='case:concept:name', how='left')
+        log['concept:counter'] = log['concept:class'].map(dict)
+        
         def process_chunk(chunk):
             chunk_dfg = {}
             for case in tqdm(chunk, desc="Processing cases", leave=False):
@@ -147,7 +164,7 @@ class DecisionPredicateGraph:
                 trace_df.sort_values(by="case:concept:name", inplace=True)
                 for i in range(len(trace_df) - 1):
                     key = (trace_df.iloc[i, 1], trace_df.iloc[i + 1, 1])
-                    chunk_dfg[key] = chunk_dfg.get(key, 0) + 1
+                    chunk_dfg[key] = chunk_dfg.get(key, 0) + (1 / (len(dict) * trace_df.iloc[i, 3])) ### MODIFICARE +1
             return chunk_dfg
 
         cases = log["case:concept:name"].unique()
