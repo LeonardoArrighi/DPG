@@ -12,7 +12,9 @@ from sklearn.base import is_classifier, is_regressor
 
 from .core import DecisionPredicateGraph
 from .visualizer import plot_dpg
-
+from metrics.nodes import NodeMetrics
+from metrics.graph import GraphMetrics
+import numpy as np
 def select_dataset(name):
     """
     Selects a standard sklearn dataset based on the provided name.
@@ -127,10 +129,7 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, model_n
     dpg = DecisionPredicateGraph(
         model=model,
         feature_names=dt.feature_names,
-        target_names=dt.target_names,
-        perc_var=perc_var,
-        decimal_threshold=decimal_threshold,
-        n_jobs=1
+        target_names=dt.target_names
     )
     dot = dpg.fit(X_train)
     
@@ -143,7 +142,8 @@ def test_base_sklearn(datasets, n_learners, perc_var, decimal_threshold, model_n
     
     # Get metrics from the DPG
     df_dpg = dpg.extract_graph_metrics(dpg_model, nodes_list)
-    df = dpg.extract_node_metrics(dpg_model, nodes_list)
+    df_dpg = GraphMetrics.extract_graph_metrics(dpg_model, nodes_list,target_names=np.unique(y_train).astype(str).tolist())
+    df = NodeMetrics.extract_node_metrics(dpg_model, nodes_list)
     
     # Plot the DPG if requested
     if plot:
