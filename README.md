@@ -16,27 +16,6 @@ DPG provides descriptive metrics that enhance the understanding of the decisions
 
 ---
 
-## Installation
-
-To install DPG locally, first clone the repository:
-
-```bash
-git clone https://github.com/LeonardoArrighi/DPG.git
-cd DPG
-```
-
-Then, install the DPG library in development mode using `pip`:
-```bash
-pip install -e .
-```
-
-Alternatively, if using `pip directly`:
-```bash
-pip install git+https://github.com/LeonardoArrighi/DPG.git
-```
-
----
-
 ## The structure
 The concept behind DPG is to convert a generic tree-based ensemble model for classification into a graph, where:
 - Nodes represent predicates, i.e., the feature-value associations present in each node of every tree;
@@ -60,6 +39,28 @@ The graph-based nature of DPG provides significant enhancements in the direction
 |------------|------------|--------------|--------------------|
 ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_constraints.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_bc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_lrc.png) | ![](https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/example_community.png) |
 |Constraints(Class 1) = val3 < F1 ≤ val1, F2 ≤ val2 | BC(F2 ≤ val2) = 4/24 | LRC(F1 ≤ val1) = 6 / 7 | Community(Class 1) = F1 ≤ val1, F2 ≤ val2 |
+
+---
+## Installation
+
+To install DPG locally, first clone the repository:
+
+```bash
+git clone https://github.com/LeonardoArrighi/DPG.git
+cd DPG
+```
+
+Then, install the DPG library in development mode using `pip`:
+```bash
+pip install -e .
+```
+
+Alternatively, if using `pip directly`:
+```bash
+pip install git+https://github.com/LeonardoArrighi/DPG.git
+```
+
+---
 
 ## Example usage (Python)
 
