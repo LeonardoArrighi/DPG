@@ -2,16 +2,15 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import yaml
 import argparse
-import dpg.sklearn_standard_dpg as test
+import dpg.sklearn_dpg as test
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--ds", type=str, default="iris", help="Basic dataset to be analyzed")
     parser.add_argument("--l", type=int, default=5, help="Number of learners for the Random Forest")
-    parser.add_argument("--pv", type=float, default=0.001, help="Threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees.")
-    parser.add_argument("--t", type=int, default=2, help="Decimal precision of each feature")
     parser.add_argument("--model_name", type=str, default="RandomForestClassifier", help="Chosen tree-based ensemble model")
     parser.add_argument("--dir", type=str, default="examples/", help="Directory to save results")
     parser.add_argument("--plot", action='store_true', help="Plot the DPG, add the argument to use it as True")
@@ -22,13 +21,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-
-    df, df_dpg_metrics = test.test_base_sklearn(datasets = args.ds,
+    args = parser.parse_args()
+    with open("config.yaml") as f:
+            config = yaml.safe_load(f)
+    
+    pv = config['dpg']['default']['perc_var']
+    t = config['dpg']['default']['decimal_threshold']
+    j = config['dpg']['default']['n_jobs'] 
+    df, df_dpg_metrics = test.test_dpg(datasets = args.ds,
                                         n_learners = args.l, 
-                                        perc_var = args.pv, 
-                                        decimal_threshold = args.t, 
+                                        perc_var = pv, 
+                                        decimal_threshold = t,
+                                        n_jobs=j,
                                         model_name = args.model_name,
-                                        file_name = os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_stats.txt'), 
+                                        file_name = os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{pv}_t{t}_stats.txt'), 
                                         plot = args.plot, 
                                         save_plot_dir = args.save_plot_dir, 
                                         attribute = args.attribute, 
@@ -37,9 +43,9 @@ if __name__ == "__main__":
 
     df.sort_values(['Degree'])
 
-    df.to_csv(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_node_metrics.csv'),
+    df.to_csv(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{pv}_t{t}_node_metrics.csv'),
                 encoding='utf-8')
 
-    with open(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{args.pv}_t{args.t}_dpg_metrics.txt'), 'w') as f:
+    with open(os.path.join(args.dir, f'{args.ds}_l{args.l}_pv{pv}_t{t}_dpg_metrics.txt'), 'w') as f:
         for key, value in df_dpg_metrics.items():
             f.write(f"{key}: {value}\n")
