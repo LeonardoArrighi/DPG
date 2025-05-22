@@ -15,7 +15,6 @@ import argparse
 
 import os
 
-# dpg_multi_ensembles
 def test_base_multi(model, datasets, n_learners, perc_var, decimal_threshold, file_name=None, plot=False, save_plot_dir="examples/", attribute=None, communities=False, class_flag=False, run=None, perc_data=100):
     # Load dataset
     #dt = select_dataset(datasets)
