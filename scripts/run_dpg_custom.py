@@ -2,8 +2,9 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import yaml
 import argparse
-import dpg.sklearn_custom_dpg as test
+import dpg.sklearn_dpg as test
 
 
 
@@ -12,8 +13,6 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, required=True, help="Basic dataset to be analyzed")
     parser.add_argument("--target_column", type=str, help="Name of the column to be used as the target variable")
     parser.add_argument("--n_learners", type=int, default=5, help="Number of learners for the Ensemble model")
-    parser.add_argument("--pv", type=float, default=0.001, help="Threshold value indicating the desire to retain only those paths that occur with a frequency exceeding a specified proportion across the trees.")
-    parser.add_argument("--t", type=int, default=2, help="Decimal precision of each feature")
     parser.add_argument("--model_name", type=str, default="RandomForestClassifier", help="Chosen tree-based ensemble model")
     parser.add_argument("--dir", type=str, default="examples/", help="Directory to save results")
     parser.add_argument("--plot", action='store_true', help="Plot the DPG, add the argument to use it as True")
@@ -21,31 +20,36 @@ if __name__ == "__main__":
     parser.add_argument("--attribute", type=str, default=None, help="A specific node attribute to visualize")
     parser.add_argument("--communities", action='store_true', help="Boolean indicating whether to visualize communities, add the argument to use it as True")
     parser.add_argument("--class_flag", action='store_true', help="Boolean indicating whether to highlight class nodes, add the argument to use it as True")
-    parser.add_argument("--n_jobs", type=int, default=-1, help="Number of jobs to run in parallel. Default is -1 (use all processors).")
     args = parser.parse_args()
 
+    with open("config.yaml") as f:
+            config = yaml.safe_load(f)
+    
+    pv = config['dpg']['default']['perc_var']
+    t = config['dpg']['default']['decimal_threshold']
+    j = config['dpg']['default']['n_jobs']
 
-
-    df, df_dpg_metrics = test.test_base_sklearn(datasets = args.dataset,
+    df, df_dpg_metrics = test.test_dpg(datasets = args.dataset,
                                         target_column = args.target_column,
                                         n_learners = args.n_learners, 
-                                        perc_var = args.pv, 
-                                        decimal_threshold = args.t,
+                                        perc_var = pv, 
+                                        decimal_threshold = t,
+                                        n_jobs = j,
                                         model_name = args.model_name,
-                                        file_name = os.path.join(args.dir, f'custom_l{args.n_learners}_pv{args.pv}_t{args.t}_stats.txt'), 
+                                        file_name = os.path.join(args.dir, f'custom_l{args.n_learners}_pv{pv}_t{t}_stats.txt'), 
                                         plot = args.plot, 
                                         save_plot_dir = args.save_plot_dir, 
                                         attribute = args.attribute, 
                                         communities = args.communities, 
-                                        class_flag = args.class_flag,
-                                        n_jobs = args.n_jobs)
+                                        class_flag = args.class_flag
+                                        )
 
     df.sort_values(['Degree'])
 
-    df.to_csv(os.path.join(args.dir, f'custom_l{args.n_learners}_pv{args.pv}_t{args.t}_node_metrics.csv'),
+    df.to_csv(os.path.join(args.dir, f'custom_l{args.n_learners}_pv{pv}_t{t}_node_metrics.csv'),
                 encoding='utf-8')
 
-    with open(os.path.join(args.dir, f'custom_l{args.n_learners}_pv{args.pv}_t{args.t}_dpg_metrics.txt'), 'w') as f:
+    with open(os.path.join(args.dir, f'custom_l{args.n_learners}_pv{pv}_t{t}_dpg_metrics.txt'), 'w') as f:
         for key, value in df_dpg_metrics.items():
             f.write(f"{key}: {value}\n")
         
