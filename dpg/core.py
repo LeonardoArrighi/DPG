@@ -9,20 +9,69 @@ from tqdm import tqdm
 import graphviz
 import networkx as nx
 import hashlib
+import yaml
 from joblib import Parallel, delayed
+
+from typing import List, Dict, Union
+from sklearn.base import is_classifier, is_regressor
 
 from sklearn.ensemble import (AdaBoostRegressor, RandomForestRegressor, ExtraTreesRegressor)
 
+class DPGError(Exception):
+    """Base exception class for DPG-specific errors"""
+    pass
+
+
 class DecisionPredicateGraph:
-    def __init__(self, model, feature_names, target_names=None, perc_var=0.0, decimal_threshold=2, n_jobs=-1):
+    """
+    Main class for converting tree-based ensemble models into interpretable graphs.
+    
+    Attributes:
+        model: Trained tree ensemble model (RandomForest, AdaBoost, etc.)
+        feature_names: List of feature names
+        target_names: List of target class names
+        perc_var: Minimum path frequency threshold (0-1)
+        decimal_threshold: Rounding precision for feature values
+        n_jobs: Number of parallel jobs (-1 for all cores)
+    """
+    def __init__(self, model, feature_names, target_names=None, config_file="config.yaml"):
+        """
+        Initialize DPG converter with model and configuration.
+        
+        Args:
+            model: Tree ensemble model with estimators_ attribute
+            feature_names: List of feature names
+            target_names: Optional list of target class names
+            config_file: Path to YAML config file
+        """
+        # Load configuration
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        
+        # Input validation
+        if not hasattr(model, 'estimators_'):
+            raise DPGError("Model must be a tree-based ensemble")
+        if len(feature_names) == 0:
+            raise DPGError("Feature names cannot be empty")
+        
+        # Initialize attributes
         self.model = model
         self.feature_names = feature_names 
         self.target_names = target_names #TODO create "Class as class name"
-        self.perc_var = perc_var
-        self.decimal_threshold = decimal_threshold
-        self.n_jobs = n_jobs
+        self.perc_var = config['dpg']['default']['perc_var']
+        self.decimal_threshold = config['dpg']['default']['decimal_threshold']
+        self.n_jobs = config['dpg']['default']['n_jobs'] 
 
     def fit(self, X_train):
+        """
+        Main pipeline: Extract decision paths → Build graph → Generate visualization.
+        
+        Args:
+            X_train: Training data (n_samples, n_features)
+            
+        Returns:
+            graphviz.Digraph: Visualizable graph object
+        """
         print("\nStarting DPG extraction *****************************************")
         print("Model Class:", self.model.__class__.__name__)
         print("Model Class Module:", self.model.__class__.__module__)
@@ -30,7 +79,7 @@ class DecisionPredicateGraph:
         print("Model Params: ", self.model.get_params())
         print("*****************************************************************")
 
-
+        # Extract decision paths (parallel or sequential)
         if self.n_jobs == 1:
             log = Parallel(n_jobs=self.n_jobs)(
                 delayed(self.tracing_ensemble)(i, sample) for i, sample in tqdm(list(enumerate(X_train)), total=len(X_train))
@@ -40,10 +89,13 @@ class DecisionPredicateGraph:
                 delayed(self.tracing_ensemble_parallel)(i, sample) for i, sample in tqdm(list(enumerate(X_train)), total=len(X_train))
             )
 
+        # Process extracted paths
         log = [item for sublist in log for item in sublist]
         log_df = pd.DataFrame(log, columns=["case:concept:name", "concept:name"])
 
         print(f'Total of paths: {len(log_df["case:concept:name"].unique())}')
+
+        # Filter infrequent paths if threshold set
         if self.perc_var > 0:
             log_df = self.filter_log(log_df)
 
@@ -54,6 +106,16 @@ class DecisionPredicateGraph:
         return self.generate_dot(dfg)
 
     def tracing_ensemble(self, case_id, sample):
+        """
+        Extract decision path for a single sample (generator version).
+        
+        Args:
+            case_id: Sample identifier
+            sample: Feature values (1D array)
+            
+        Yields:
+            List[str]: Path segments as [prefix, decision/prediction]
+        """
         is_regressor = isinstance(self.model, (RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor))
         sample = sample.reshape(-1)
         for i, tree in enumerate(self.model.estimators_):
@@ -123,6 +185,15 @@ class DecisionPredicateGraph:
             
 
     def filter_log(self, log):
+        """
+        Filter paths based on frequency threshold.
+        
+        Args:
+            log: DataFrame of extracted paths
+            
+        Returns:
+            pd.DataFrame: Filtered paths meeting perc_var threshold
+        """
         from collections import defaultdict
         variant_map = defaultdict(list)
         for case_id, group in log.groupby("case:concept:name", sort=False):
@@ -137,8 +208,17 @@ class DecisionPredicateGraph:
         return log[log["case:concept:name"].isin(case_ids_to_keep)].copy()
 
     def discover_dfg(self, log):
-
+        """
+        Build directed frequency graph from path logs.
+        
+        Args:
+            log: DataFrame of decision paths
+            
+        Returns:
+            Dict[tuple, int]: Edge frequencies as {(source, target): count}
+        """
         def process_chunk(chunk):
+            """Process a subset of cases in parallel"""
             chunk_dfg = {}
             for case in tqdm(chunk, desc="Processing cases", leave=False):
                 trace_df = log[log["case:concept:name"] == case].copy()
@@ -166,6 +246,15 @@ class DecisionPredicateGraph:
         return dfg
 
     def generate_dot(self, dfg):
+        """
+        Convert frequency graph to Graphviz format.
+        
+        Args:
+            dfg: Directed frequency graph
+            
+        Returns:
+            graphviz.Digraph: Visualizable graph
+        """
         dot = graphviz.Digraph(
             "dpg",
             engine="dot",
@@ -194,6 +283,15 @@ class DecisionPredicateGraph:
         return dot
 
     def to_networkx(self, graphviz_graph):
+        """
+        Convert Graphviz graph to NetworkX format.
+        
+        Args:
+            graphviz_graph: Input graph
+            
+        Returns:
+            Tuple[nx.DiGraph, List]: NetworkX graph and node metadata
+        """
         networkx_graph = nx.DiGraph()
         nodes_list = []
         edges = []
@@ -220,77 +318,3 @@ class DecisionPredicateGraph:
             else:
                 networkx_graph.add_edge(src, dest)
         return networkx_graph, sorted(nodes_list, key=lambda x: x[0])
-
-    def calculate_class_boundaries(self, key, nodes, class_names):
-        class_name = key #TODO create "Class as class name"
-        feature_bounds = {}
-        boundaries = []
-        for node in nodes:
-            parts = re.split(' <= | > ', node)
-            feature = parts[0]
-            value = float(parts[1])
-            condition = '>' in node
-            if feature not in feature_bounds:
-                feature_bounds[feature] = [math.inf, -math.inf]
-            if condition:
-                if value < feature_bounds[feature][0]:
-                    feature_bounds[feature][0] = value
-            else:
-                if value > feature_bounds[feature][1]:
-                    feature_bounds[feature][1] = value
-        for feature, (min_greater, max_lessequal) in feature_bounds.items():
-            if min_greater == math.inf:
-                boundary = f"{feature} <= {max_lessequal}"
-            elif max_lessequal == -math.inf:
-                boundary = f"{feature} > {min_greater}"
-            else:
-                boundary = f"{min_greater} < {feature} <= {max_lessequal}"
-            boundaries.append(boundary)
-        return str(class_name), boundaries
-
-    def calculate_boundaries(self, class_dict, class_names):
-        results = Parallel(n_jobs=-1)(
-            delayed(self.calculate_class_boundaries)(key, nodes, class_names) for key, nodes in class_dict.items()
-        )
-        return dict(results)
-
-    def extract_graph_metrics(self, dpg_model, nodes_list):
-        np.random.seed(42)
-        diz_nodes = {node[1] if "->" not in node[0] else None: node[0] for node in nodes_list}
-        diz_nodes = {k: v for k, v in diz_nodes.items() if k is not None}
-        diz_nodes_reversed = {v: k for k, v in diz_nodes.items()}
-        asyn_lpa_communities = nx.community.asyn_lpa_communities(dpg_model, weight='weight')
-        asyn_lpa_communities_stack = [{diz_nodes_reversed[str(node)] for node in community} for community in asyn_lpa_communities]
-        filtered_nodes = {k: v for k, v in diz_nodes.items() if 'Class' in k or 'Pred' in k}
-        predecessors = {k: [] for k in filtered_nodes}
-        for key_1, value_1 in filtered_nodes.items():
-            try:
-                preds = nx.single_source_shortest_path(dpg_model.reverse(), value_1)
-                predecessors[key_1] = [k for k, v in diz_nodes.items() if v in preds and k != key_1]
-            except nx.NetworkXNoPath:
-                continue
-        class_bounds = self.calculate_boundaries(predecessors, self.target_names)
-        return {"Communities": asyn_lpa_communities_stack, "Class Bounds": class_bounds}
-
-    def extract_node_metrics(self, dpg_model, nodes_list):
-        in_nodes = {}
-        out_nodes = {}
-        degree = {}
-        for node in dpg_model.nodes():
-            in_nodes[node] = dpg_model.in_degree(node)
-            out_nodes[node] = dpg_model.out_degree(node)
-            degree[node] = in_nodes[node] + out_nodes[node]
-        sample_size = int(1 * len(dpg_model.nodes()))
-        betweenness_centrality = nx.betweenness_centrality(dpg_model, k=sample_size, normalized=True, weight='weight', endpoints=False)
-        local_reaching_centrality = {node: nx.local_reaching_centrality(dpg_model, node, weight='weight') for node in dpg_model.nodes()}
-        data_node = {
-            "Node": list(dpg_model.nodes()),
-            "Degree": list(degree.values()),
-            "In degree nodes": list(in_nodes.values()),
-            "Out degree nodes": list(out_nodes.values()),
-            "Betweenness centrality": list(betweenness_centrality.values()),
-            "Local reaching centrality": list(local_reaching_centrality.values()),
-        }
-        df_data_node = pd.DataFrame(data_node).set_index('Node')
-        df_nodes_list = pd.DataFrame(nodes_list, columns=["Node", "Label"]).set_index('Node')
-        return pd.concat([df_data_node, df_nodes_list], axis=1, join='inner').reset_index()
