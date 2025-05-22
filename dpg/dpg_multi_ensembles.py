@@ -6,6 +6,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.base import is_classifier, is_regressor
 from dpg.core import digraph_to_nx, get_dpg, get_dpg_node_metrics, get_dpg_metrics
 from dpg.visualizer import plot_dpg
+from metrics.nodes import NodeMetrics
+from metrics.graph import GraphMetrics
 
 import numpy as np
 import pandas as pd
@@ -95,8 +97,8 @@ def test_base_multi(model, datasets, n_learners, perc_var, decimal_threshold, fi
         return
     
     # Get metrics from the DPG
-    df_dpg = get_dpg_metrics(dpg_model, nodes_list)
-    df = get_dpg_node_metrics(dpg_model, nodes_list)
+    df_dpg = GraphMetrics.extract_graph_metrics(dpg_model, nodes_list,target_names=np.unique(y_train).astype(str).tolist())
+    df = NodeMetrics.extract_node_metrics(dpg_model, nodes_list)
     
     # Plot the DPG if requested
     if plot:
