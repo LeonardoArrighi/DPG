@@ -22,8 +22,15 @@ if __name__ == "__main__":
     parser.add_argument("--class_flag", action='store_true', help="Boolean indicating whether to highlight class nodes, add the argument to use it as True")
     args = parser.parse_args()
 
-    with open("config.yaml") as f:
-            config = yaml.safe_load(f)
+    config_path="config.yaml"
+    try:
+        with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Config file not found at {config_path}")
+    except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"Invalid YAML in config file: {str(e)}")
     
     pv = config['dpg']['default']['perc_var']
     t = config['dpg']['default']['decimal_threshold']
