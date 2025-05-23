@@ -10,3 +10,7 @@ dpg:
     node_attrs:
       shape: "box"
       fillcolor: "#ffc3c3"
+    class_node:
+      fillcolor: "#a4c2f4"  # Light blue
+      shape: "box"
+      style: "rounded, filled"
