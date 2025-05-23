@@ -75,6 +75,8 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from dpg.core import DecisionPredicateGraph
 from dpg.visualizer import plot_dpg
+from metrics.nodes import NodeMetrics
+from metrics.graph import GraphMetrics
 
 # Load dataset (last column assumed to be target)
 df = pd.read_csv("datasets/custom.csv", index_col=0)
@@ -91,17 +93,14 @@ class_names = np.unique(y).astype(str).tolist()
 dpg = DecisionPredicateGraph(
     model=model,
     feature_names=feature_names,
-    target_names=class_names,
-    perc_var=0.01,
-    decimal_threshold=2,
-    n_jobs=1
+    target_names=class_names
 )
 dot = dpg.fit(X.values)
 dpg_model, nodes_list = dpg.to_networkx(dot)
 
 # Extract and visualize
-dpg_metrics = dpg.extract_graph_metrics(dpg_model, nodes_list)
-df_nodes = dpg.extract_node_metrics(dpg_model, nodes_list)
+dpg_metrics = GraphMetrics.extract_graph_metrics(dpg_model, nodes_list,target_names=np.unique(y_train).astype(str).tolist())
+df = NodeMetrics.extract_node_metrics(dpg_model, nodes_list)
 plot_dpg("dpg_output.png", dot, df_nodes, dpg_metrics, save_dir="datasets", communities=True, class_flag=True)
 ```
 #### Output:
