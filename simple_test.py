@@ -16,6 +16,7 @@ from dpg.core import DecisionPredicateGraph
 from dpg.visualizer import plot_dpg
 from metrics.nodes import NodeMetrics
 from metrics.graph import GraphMetrics
+import yaml
 
 # =============================================================================
 # CONFIGURATION SECTION
@@ -34,6 +35,20 @@ model = RandomForestClassifier(n_estimators=num_bl, random_state=27)
 # =============================================================================
 # DATA LOADING AND PREPROCESSING
 # =============================================================================
+
+config_path="config.yaml"
+try:
+        with open(config_path) as f:
+                config = yaml.safe_load(f)
+
+except FileNotFoundError:
+        raise FileNotFoundError(f"Config file not found at {config_path}")
+except yaml.YAMLError as e:
+        raise yaml.YAMLError(f"Invalid YAML in config file: {str(e)}")
+
+perc_var = config['dpg']['default']['perc_var']
+decimal_threshold = config['dpg']['default']['decimal_threshold']
+n_jobs = config['dpg']['default']['n_jobs'] 
 # Construct dataset path
 current_path = os.getcwd()
 dataset_path = os.path.join(current_path, "datasets", dataset)
