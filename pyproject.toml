@@ -8,7 +8,10 @@ readme = "README.md"
 homepage = "https://github.com/LeonardoArrighi/DPG"
 repository = "https://github.com/LeonardoArrighi/DPG"
 keywords = ["decision graph", "ensemble learning", "explainable ai"]
-packages = [{ include = "dpg" }]
+packages = [
+    { include = "dpg" },
+    { include = "metrics" }
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License"
