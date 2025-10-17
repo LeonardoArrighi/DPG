@@ -75,6 +75,22 @@ pip install git+https://github.com/LeonardoArrighi/DPG.git
   # Then install DPG
   pip install -e .
   ```
+2- For Linux/Mac Users:
+  ```bash
+  # Create a virtual environment
+  python -m venv dpg_env
+
+  # Activate the virtual environment
+  source dpg_env/bin/activate
+
+  # Install DPG
+  pip install -e .
+  ```
+3- Deactivating the Virtual Environment:
+  When you're done working with DPG, you can deactivate the virtual environment:
+  ```bash
+  deactivate
+  ```
 ---
 
 ## Example usage (Python)
