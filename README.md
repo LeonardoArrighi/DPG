@@ -110,8 +110,8 @@ plot_dpg("dpg_output.png", dot, df_nodes, dpg_metrics, save_dir="datasets", comm
 
 #### CLI scripts
 The library contains two different scripts to apply DPG:
-- `dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
-- `dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
+- `run_dpg_standard.py`: with this script it is possible to test DPG on a standard classification dataset provided by `sklearn` such as `iris`, `digits`, `wine`, `breast cancer`, and `diabetes`.
+- `run_dpg_custom.py`: with this script it is possible to apply DPG to your classification dataset, specifying the target class.
 
 #### DPG implementation
 The library also contains two other essential scripts:
@@ -119,7 +119,7 @@ The library also contains two other essential scripts:
 - `visualizer.py` contains the functions used to manage the visualization of DPG.
 
 #### Output
-The DPG output, through `dpg_standard.py` or `dpg_custom.py`, produces several files:
+The DPG output, through `run_dpg_standard.py` or `run_dpg_custom.py`, produces several files:
 - the visualization of DPG in a dedicated environment, which can be zoomed and saved;
 - a `.txt` file containing the DPG metrics;
 - a `.csv` file containing the information about all the nodes of the DPG and their associated metrics;
@@ -142,26 +142,26 @@ Where:
   
 Disclaimer: `attribute` and `communities` can not be added together, since DPG supports just one of the two visualizations.
 
-The usage of `dpg_custom.py` is similar, but it requires another parameter:
+The usage of `run_dpg_custom.py` is similar, but it requires another parameter:
 - `target_column`, which is the name of the column to be used as the target variable;
 - while `ds` is the path of the directory where the dataset is.
 
-#### Example `dpg_standard.py`
+#### Example `run_dpg_standard.py`
 Some examples can be appreciated in the `examples` folder: https://github.com/LeonardoArrighi/DPG/tree/main/examples
 
 In particular, the following DPG is obtained by transforming a Random Forest with 5 base learners, trained on Iris dataset.
-The used command is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples`.
+The used command is `python run_dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2.png" width="800" />
 </p>
 
 The following visualizations are obtained using the same parameters as the previous example, but they show two different metrics: _Community_ and _Betweenness centrality_.
-The used command for showing communities is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --communities`.
+The used command for showing communities is `python run_dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --communities`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2_communities.png" width="800" />
 </p>
 
-The used command for showing a specific property is `python dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --attribute "Betweenness centrality" --class_flag`.
+The used command for showing a specific property is `python run_dpg_standard.py --dataset iris --n_learners 5 --pv 0.001 --t 2 --dir examples --plot --save_plot_dir examples --attribute "Betweenness centrality" --class_flag`.
 <p align="center">
   <img src="https://github.com/LeonardoArrighi/DPG/blob/main/dpg_image_examples/iris_bl5_perc0.001_dec2_Betweennesscentrality.png" width="800" />
 </p>
