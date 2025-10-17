@@ -59,7 +59,22 @@ Alternatively, if using `pip directly`:
 ```bash
 pip install git+https://github.com/LeonardoArrighi/DPG.git
 ```
+**Troubleshooting:** If you encounter dependency conflicts, we recommend using a virtual environment:
 
+1- For Windows Users:
+  ```bash
+  # Create a virtual environment
+  python -m venv dpg_env
+
+  # Activate the virtual environment
+  dpg_env\Scripts\activate
+
+  # If you get execution policy errors, run this first in PowerShell as Administrator:
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+  # Then install DPG
+  pip install -e .
+  ```
 ---
 
 ## Example usage (Python)
