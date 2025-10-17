@@ -52,7 +52,7 @@ cd DPG
 
 Then, install the DPG library in development mode using `pip`:
 ```bash
-pip install -e .
+pip install -r requirements.txt  
 ```
 
 Alternatively, if using `pip directly`:
