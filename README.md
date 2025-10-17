@@ -126,7 +126,7 @@ The DPG output, through `run_dpg_standard.py` or `run_dpg_custom.py`, produces s
 - a `.txt` file containing the Random Forest statistics (accuracy, confusion matrix, classification report)
 
 ## Easy usage
-Usage: `python dpg_standard.py --dataset <dataset_name> --n_learners <integer_number> --pv <threshold_value> --t <integer_number> --model_name <str_model_name> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
+Usage: `python run_dpg_standard.py --dataset <dataset_name> --n_learners <integer_number> --pv <threshold_value> --t <integer_number> --model_name <str_model_name> --dir <save_dir_path> --plot --save_plot_dir <save_plot_dir_path> --attribute <attribute> --communities --class_flag`
 Where:
 - `dataset` is the name of the standard classification `sklearn` dataset to be analyzed;
 - `n_learners` is the number of base learners for the Random Forest;
